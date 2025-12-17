@@ -1108,7 +1108,7 @@ if (require.main === module) {
     let transport: McpTransport;
 
     if (transportType === 'sse') {
-        const port = parseInt(process.env.PORT || '3001');
+        const port = parseInt(process.env.MCP_PORT || '3001');
         transport = new SseTransport(port);
     } else {
         transport = new StdioTransport();
