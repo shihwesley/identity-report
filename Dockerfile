@@ -29,8 +29,8 @@ COPY --from=builder /app/node_modules ./node_modules
 COPY --from=builder /app/package.json ./package.json
 
 # Entrypoint script to run both UI and MCP
-RUN echo '#!/bin/sh\nnpm run start & npm run start:mcp' > entrypoint.sh && chmod +x entrypoint.sh
+RUN printf "#!/bin/sh\nnpm run start & npm run start:mcp\nwait\n" > /app/entrypoint.sh && chmod +x /app/entrypoint.sh
 
 EXPOSE 3000 3001
 
-CMD ["./entrypoint.sh"]
+CMD ["sh", "/app/entrypoint.sh"]
