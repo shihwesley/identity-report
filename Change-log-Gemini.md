@@ -148,3 +148,10 @@ This document details the changes made to the Profile Vault codebase to optimize
     - **CD**: Builds and pushes production Docker images to **GitHub Container Registry (GHCR)** on every push to `main`.
 * **Railway Optimization**: Documented a **Multi-Service** deployment strategy on [Railway.app](https://railway.app/) for independent scaling of the UI and MCP components.
 * **Standlone MCP Build**: Configured `esbuild` for the MCP server to ensure reliable, zero-dependency production builds.
+
+### 17. Security Patch: Next.js Upgrade
+
+**Goal:** Resolve security vulnerabilities flagged during deployment.
+
+* **Next.js Upgrade**: Upgraded from `16.0.7` to `16.0.10` to address critical security advisories.
+* **Lock File Refresh**: Synchronized `package-lock.json` with the new version to ensure reproducible and secure builds in CI/CD and Docker environments.
