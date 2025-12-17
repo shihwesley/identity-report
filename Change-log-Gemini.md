@@ -137,3 +137,14 @@ This document details the changes made to the Profile Vault codebase to optimize
 * **Repository Re-initialization:** Re-initialized the Git repository to purge history of sensitive data and unwanted large commits.
 * **Optimized .gitignore:** Updated `.gitignore` to strictly exclude large datasets, logs, and sensitive `.env` patterns.
 * **GitHub Push:** Successfully created and pushed the clean repository to the [shihwesley/identity-report](https://github.com/shihwesley/identity-report) repository.
+
+### 16. DevOps & Railway Cloud Hosting
+
+**Goal:** Automate the build process and provide a professional cloud hosting pathway.
+
+* **Dockerization**: Created a multi-stage `Dockerfile` to serve both the Next.js UI and the MCP SSE server in a production-ready alpine container.
+* **GitHub Actions**: 
+    - **CI**: Runs linting and build checks on pull requests.
+    - **CD**: Builds and pushes production Docker images to **GitHub Container Registry (GHCR)** on every push to `main`.
+* **Railway Optimization**: Documented a **Multi-Service** deployment strategy on [Railway.app](https://railway.app/) for independent scaling of the UI and MCP components.
+* **Standlone MCP Build**: Configured `esbuild` for the MCP server to ensure reliable, zero-dependency production builds.
