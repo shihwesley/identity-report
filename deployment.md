@@ -47,14 +47,17 @@ For the **MCP Server** service:
 
 ## 🏁 Connecting Your AI
 
-Once your MCP server domain is generated (e.g., `mcp-production.up.railway.app`), you can add it to Claude Desktop or any MCP client:
+Once your MCP server domain is generated (e.g., `identity-report-mcp.up.railway.app`), you can add it to Claude Desktop or any MCP client:
 
 ```json
 {
   "mcpServers": {
     "identity-report": {
       "command": "npx",
-      "args": ["@modelcontextprotocol/client-sse", "https://your-mcp-url.up.railway.app/sse"]
+      "args": [
+        "@modelcontextprotocol/client-sse", 
+        "https://identity-report-mcp.up.railway.app/sse"
+      ]
     }
   }
 }
