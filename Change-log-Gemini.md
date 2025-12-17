@@ -19,8 +19,6 @@ This document details the changes made to the Profile Vault codebase to optimize
 
 * **Targeted Routing:** Refactored `SseTransport` to map incoming `request.id` to the specific client `sessionId`.
 * **Privacy:** Responses are now sent *only* to the client that made the request, rather than broadcasting to all connected clients.
-* **Targeted Routing:** Refactored `SseTransport` to map incoming `request.id` to the specific client `sessionId`.
-* **Privacy:** Responses are now sent *only* to the client that made the request, rather than broadcasting to all connected clients.
 * **Cleanup:** Implemented cleanup logic to remove session mappings when clients disconnect.
 
 ### 3. Code Quality Refactoring
@@ -47,12 +45,6 @@ This document details the changes made to the Profile Vault codebase to optimize
 
 **Goal:** Enable users to store their encrypted profile vault in a decentralized, sovereign manner using IPFS and Public Blockchains.
 
-* **IPFS Integration (`src/lib/services/ipfs.ts`):**
-  * Implemented `PinataService` to handle `upload` of encrypted `.pvault` blobs to IPFS.
-  * Supports Pinata JWT authentication.
-* **IPFS Integration (`src/lib/services/ipfs.ts`):**
-  * Implemented `PinataService` to handle `upload` of encrypted `.pvault` blobs to IPFS.
-  * Supports Pinata JWT authentication.
 * **Blockchain Registry (`src/lib/services/registry.ts`):**
   * Implemented `MockRegistryService` to simulate Smart Contract interactions (mapping `DID` -> `CID`) without incurring gas fees during development.
   * Prepared interfaces for future `viem` implementation on Polygon.
@@ -72,12 +64,6 @@ This document details the changes made to the Profile Vault codebase to optimize
 * **`toggle_auto_sync` Tool:**
   * Enables/Disables the `Auto-Sync` preference.
   * **Automation:** When enabled, calling `archive_conversation` will *automatically* trigger a background cloud sync, creating a seamless "Save & Push" workflow.
-
-* **IPFS Integration (`src/lib/services/ipfs.ts`):**
-  * Implemented `PinataService` to handle `upload` of encrypted `.pvault` blobs to IPFS.
-  * Supports Pinata JWT authentication.
-* **IPFS Integration (`src/lib/services/ipfs.ts`):**
-  * Implemented `
 
 ### 8. Dashboard Timeline View
 
@@ -133,3 +119,21 @@ This document details the changes made to the Profile Vault codebase to optimize
 * **Connect Wallet:** Added a `ConnectWallet` component that allows users to link their MetaMask (or EVM) wallet.
 * **Publish to Chain:** Added a "Publish to Chain" button in the dashboard. This triggers a transaction to the `ProfileRegistry` smart contract, linking the user's wallet address to their IPFS Vault CID.
 * **Deployment Guide:** Created `deployment_guide.md` to assist users in manually deploying the registry contract via Remix.
+
+### 14. Project Rebranding: Identity Report
+
+**Goal:** Pivot the project branding from "Profile Vault" to "Identity Report" and establish a definitive, high-quality aesthetic.
+
+* **Rebranding:** Renamed the project across all files, including `package.json`, `layout.tsx`, and the Sidebar component.
+* **Minimalist UI Overhaul:** Adopted the Context7 "Stone & Dodger Blue" light theme. Cleaned up all glassmorphism and dark mode artifacts for a premium, solid look.
+* **Documentation Overhaul:** Rewrote the `README.md` to include high-quality badges, a newly generated cover image, and deep architectural details (IPFS flow, Polygon Registry).
+* **Cover Graphic:** Generated a 1500x500 hero graphic for the project using AI to match the minimalist branding.
+
+### 15. Git Cleanup & Repository Finalization
+
+**Goal:** Prepare the project for a secure and clean public release.
+
+* **History Scrubbing:** Removed accidentally leaked OpenAI API keys and large local data files (`realProfile.json`) from the codebase.
+* **Repository Re-initialization:** Re-initialized the Git repository to purge history of sensitive data and unwanted large commits.
+* **Optimized .gitignore:** Updated `.gitignore` to strictly exclude large datasets, logs, and sensitive `.env` patterns.
+* **GitHub Push:** Successfully created and pushed the clean repository to the [shihwesley/identity-report](https://github.com/shihwesley/identity-report) repository.
