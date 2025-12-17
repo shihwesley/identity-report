@@ -49,7 +49,8 @@ async function main() {
         longTermMemory: [],
         projects: [],
         conversations: result.conversations,
-        insights: []
+        insights: [],
+        activeGrants: []
     };
 
     console.log(`Saving to: ${OUTPUT_FILE}`);
