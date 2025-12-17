@@ -1,73 +1,70 @@
 # Deployment Guide: Identity Report
 
-This guide explains how to deploy the Identity Report project using Docker and GitHub Actions.
+Identity Report is containerized and ready for cloud hosting. This guide focuses on **Railway**, using a professional **Multi-Service** architecture.
 
-## 🐳 Docker Deployment
+## 🚂 Railway Deployment (Multi-Service)
 
-The project is containerized using a multi-stage Docker build that serves both the Next.js UI and the MCP SSE server.
+To ensure both the Next.js UI and the MCP SSE Server are independently accessible and scalable, we recommend deploying them as two separate services in one Railway project.
 
-### Prerequisites
+### 1. The Web UI Service (Frontend)
 
-- Docker installed.
-- (Optional) Pinata JWT for cloud sync.
+1. **New Project**: Select your `identity-report` repo.
+2. **Settings**: Ensure the **Start Command** is `npm run start`.
+3. **Port**: Set to `3000`.
+4. **Variables**: Add your `PINATA_JWT`.
 
-### 1. Build & Run Locally
+### 2. The MCP Server (Backend)
 
-```bash
-# Build the image
-docker build -t identity-report .
+1. **Add Service**: click **"New"** > **"GitHub Repo"** > Select the same `identity-report` repo again.
+2. **Settings**:
+   - Change the **Service Name** to `identity-report-mcp`.
+   - Override the **Start Command** to: `npm run start:mcp`.
+3. **Networking**:
+   - Set the **Port** to `3001`.
+   - Click **"Generate Domain"** to get a public URL for your MCP server.
+4. **Variables**:
+   - `MCP_TRANSPORT`: `sse`
+   - `VAULT_PATH`: `/app/data` (Ensure you mount a volume here).
 
-# Run the container
-docker run -p 3000:3000 -p 3001:3001 \
-  -e PINATA_JWT="your_jwt_here" \
-  identity-report
+### 3. Persistent Storage (Vault)
+
+For the **MCP Server** service:
+
+1. Go to **Variables** > **Volumes** (or the side menu).
+2. Click **"New Volume"** and mount it to `/app/data`.
+3. This stores your user profile, memories, and identity metadata securely across restarts.
+
+---
+
+## 🛠️ Configuration Details
+
+| Service | Start Command | Port | URL Path |
+| :--- | :--- | :--- | :--- |
+| **UI** | `npm run start` | 3000 | `/` |
+| **MCP** | `npm run start:mcp` | 3001 | `/sse` |
+
+---
+
+## 🏁 Connecting Your AI
+
+Once your MCP server domain is generated (e.g., `mcp-production.up.railway.app`), you can add it to Claude Desktop or any MCP client:
+
+```json
+{
+  "mcpServers": {
+    "identity-report": {
+      "command": "npx",
+      "args": ["@modelcontextprotocol/client-sse", "https://your-mcp-url.up.railway.app/sse"]
+    }
+  }
+}
 ```
 
-- **UI**: [http://localhost:3000](http://localhost:3000)
-- **MCP SSE**: [http://localhost:3001/sse](http://localhost:3001/sse)
+## 🐳 Running Everything Locally (Docker Compose)
 
----
+If you prefer running both together on one machine, use the root `Dockerfile` or the provided `entrypoint.sh`.
 
-## 🚀 CI/CD with GitHub Actions
-
-The repository includes two workflows:
-
-1. **Continuous Integration (CI)**: `ci.yml`
-   - Runs on every PR/Push to `main`.
-   - Lints the code and verifies the build.
-
-2. **Continuous Deployment (CD)**: `deploy.yml`
-   - Runs on every Push to `main`.
-   - Builds the Docker image and pushes it to **GitHub Container Registry (GHCR)**.
-   - Image URI: `ghcr.io/<your-username>/identity-report:latest`
-
----
-
-## ☁️ Cloud Hosting
-
-### Using Coolify / Railway / Render
-
-1. Connect your GitHub repository.
-2. Select **Dockerfile** as the build method.
-3. Map the following ports:
-   - `3000` -> HTTP (UI)
-   - `3001` -> HTTP (MCP Server)
-4. Add environment variables:
-   - `PINATA_JWT`: Your Pinata token.
-   - `VAULT_PATH`: `/app/data` (Ensure you mount a persistent volume here).
-
-### Using Docker Compose
-
-```yaml
-services:
-  identity-report:
-    image: ghcr.io/shihwesley/identity-report:latest
-    ports:
-      - "3000:3000"
-      - "3001:3001"
-    environment:
-      - PINATA_JWT=${PINATA_JWT}
-      - VAULT_PATH=/app/data
-    volumes:
-      - ./data:/app/data
+```bash
+docker build -t identity-report .
+docker run -p 3000:3000 -p 3001:3001 identity-report
 ```
