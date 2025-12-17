@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useRef } from 'react';
-import { MOCK_PROFILE } from '@/lib/mockData';
+import { CURRENT_PROFILE } from '@/lib/currentProfile';
 
 export default function ProfilePage() {
     const [isExporting, setIsExporting] = useState(false);
@@ -50,25 +50,25 @@ export default function ProfilePage() {
             <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
                 <div className="glass-card p-6 rounded-xl">
                     <div className="flex items-center gap-4 mb-6">
-                        <img src={MOCK_PROFILE.identity.avatarUrl} className="w-16 h-16 rounded-full bg-zinc-800" alt="Avatar" />
+                        <img src={CURRENT_PROFILE.identity.avatarUrl || "https://api.dicebear.com/7.x/avataaars/svg?seed=User"} className="w-16 h-16 rounded-full bg-zinc-800" alt="Avatar" />
                         <div>
-                            <h2 className="text-xl font-bold text-white">{MOCK_PROFILE.identity.fullName}</h2>
-                            <p className="text-zinc-400">{MOCK_PROFILE.identity.email}</p>
+                            <h2 className="text-xl font-bold text-white">{CURRENT_PROFILE.identity.fullName}</h2>
+                            <p className="text-zinc-400">{CURRENT_PROFILE.identity.email}</p>
                         </div>
                     </div>
 
                     <form className="space-y-4">
                         <div>
                             <label className="block text-xs text-zinc-500 mb-1">Display Name</label>
-                            <input type="text" defaultValue={MOCK_PROFILE.identity.displayName} className="w-full bg-zinc-900 border border-zinc-700 rounded p-2 text-sm text-white" />
+                            <input type="text" defaultValue={CURRENT_PROFILE.identity.displayName} className="w-full bg-zinc-900 border border-zinc-700 rounded p-2 text-sm text-white" />
                         </div>
                         <div>
                             <label className="block text-xs text-zinc-500 mb-1">Role</label>
-                            <input type="text" defaultValue={MOCK_PROFILE.identity.role} className="w-full bg-zinc-900 border border-zinc-700 rounded p-2 text-sm text-white" />
+                            <input type="text" defaultValue={CURRENT_PROFILE.identity.role} className="w-full bg-zinc-900 border border-zinc-700 rounded p-2 text-sm text-white" />
                         </div>
                         <div>
                             <label className="block text-xs text-zinc-500 mb-1">Location</label>
-                            <input type="text" defaultValue={MOCK_PROFILE.identity.location} className="w-full bg-zinc-900 border border-zinc-700 rounded p-2 text-sm text-white" />
+                            <input type="text" defaultValue={CURRENT_PROFILE.identity.location} className="w-full bg-zinc-900 border border-zinc-700 rounded p-2 text-sm text-white" />
                         </div>
                         <div className="pt-4">
                             <button className="w-full py-2 bg-violet-600 hover:bg-violet-500 text-white rounded font-medium text-sm">Save Changes</button>
@@ -131,8 +131,8 @@ export default function ProfilePage() {
 
                             {backupStatus && (
                                 <div className={`p-3 rounded-lg text-sm ${backupStatus.type === 'success'
-                                        ? 'bg-teal-500/10 border border-teal-500/30 text-teal-300'
-                                        : 'bg-red-500/10 border border-red-500/30 text-red-300'
+                                    ? 'bg-teal-500/10 border border-teal-500/30 text-teal-300'
+                                    : 'bg-red-500/10 border border-red-500/30 text-red-300'
                                     }`}>
                                     {backupStatus.message}
                                 </div>
@@ -148,7 +148,7 @@ export default function ProfilePage() {
                     <div className="glass-card p-6 rounded-xl">
                         <h3 className="text-lg font-semibold text-white mb-4">Core Preferences</h3>
                         <div className="space-y-3">
-                            {MOCK_PROFILE.preferences.map(pref => (
+                            {CURRENT_PROFILE.preferences.map(pref => (
                                 <div key={pref.id} className="p-3 bg-zinc-900/50 rounded border border-zinc-800">
                                     <div className="flex justify-between mb-1">
                                         <span className="text-xs font-medium text-teal-400">{pref.key}</span>

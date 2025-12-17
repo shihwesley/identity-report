@@ -1,6 +1,6 @@
 'use client';
 
-import { MOCK_PROFILE } from '@/lib/mockData';
+import { CURRENT_PROFILE } from '@/lib/currentProfile';
 
 export default function MemoryPage() {
     return (
@@ -13,11 +13,11 @@ export default function MemoryPage() {
             </div>
 
             <div className="grid grid-cols-1 gap-4">
-                {MOCK_PROFILE.longTermMemory.concat(MOCK_PROFILE.shortTermMemory).map((mem, idx) => (
+                {CURRENT_PROFILE.longTermMemory.concat(CURRENT_PROFILE.shortTermMemory).map((mem, idx) => (
                     <div key={idx} className="glass-card p-4 rounded-xl flex gap-4 hover:border-violet-500/50 transition-colors group">
                         <div className={`w-12 h-12 rounded-lg flex items-center justify-center shrink-0 ${mem.type === 'technical' ? 'bg-blue-500/10 text-blue-400' :
-                                mem.type === 'preference' ? 'bg-purple-500/10 text-purple-400' :
-                                    'bg-zinc-800 text-zinc-400'
+                            mem.type === 'preference' ? 'bg-purple-500/10 text-purple-400' :
+                                'bg-zinc-800 text-zinc-400'
                             }`}>
                             <span className="text-xs font-bold uppercase">{mem.type.substring(0, 3)}</span>
                         </div>

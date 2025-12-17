@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { MOCK_PROFILE } from '@/lib/mockData';
+import { CURRENT_PROFILE } from '@/lib/currentProfile';
 
 export default function ChatPage() {
     const [activeModel, setActiveModel] = useState<'gpt-4' | 'gemini-1.5' | 'claude-3'>('gpt-4');
@@ -44,8 +44,8 @@ export default function ChatPage() {
                     {messages.map((msg, i) => (
                         <div key={i} className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}>
                             <div className={`max-w-[80%] p-3 rounded-lg text-sm leading-relaxed ${msg.role === 'user'
-                                    ? 'bg-violet-600 text-white rounded-br-none'
-                                    : 'bg-zinc-800/80 text-zinc-200 rounded-bl-none'
+                                ? 'bg-violet-600 text-white rounded-br-none'
+                                : 'bg-zinc-800/80 text-zinc-200 rounded-bl-none'
                                 }`}>
                                 {msg.content}
                             </div>
@@ -78,7 +78,7 @@ export default function ChatPage() {
                     <div className="space-y-3">
                         <div className="text-xs">
                             <span className="text-zinc-500">Identity:</span>
-                            <p className="text-zinc-300 font-mono mt-1 line-clamp-1">{MOCK_PROFILE.identity.fullName} ({MOCK_PROFILE.identity.role})</p>
+                            <p className="text-zinc-300 font-mono mt-1 line-clamp-1">{CURRENT_PROFILE.identity.fullName} ({CURRENT_PROFILE.identity.role})</p>
                         </div>
                         <div className="text-xs">
                             <span className="text-zinc-500">Active Task:</span>
@@ -97,7 +97,7 @@ export default function ChatPage() {
                 <div className="glass-card p-4 rounded-xl border-l-2 border-violet-500 flex-1">
                     <h3 className="text-xs font-semibold text-violet-400 uppercase tracking-wider mb-3">System Instructions</h3>
                     <div className="space-y-2">
-                        {MOCK_PROFILE.preferences.map(pref => (
+                        {CURRENT_PROFILE.preferences.map(pref => (
                             <div key={pref.id} className="text-xs flex gap-2">
                                 <span className="text-violet-500/80">●</span>
                                 <span className="text-zinc-400">{pref.value}</span>
