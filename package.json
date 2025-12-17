@@ -4,6 +4,7 @@
   "private": true,
   "scripts": {
     "dev": "next dev",
+    "prebuild": "node -e \"const fs = require('fs'); const path = './src/lib/realProfile.json'; if (!fs.existsSync(path)) fs.writeFileSync(path, JSON.stringify({conversations:[]}))\"",
     "build": "next build",
     "build:mcp": "esbuild src/lib/mcp/server.ts --bundle --platform=node --outfile=dist/server.js --external:fsevents --external:canvas",
     "start": "next start",
