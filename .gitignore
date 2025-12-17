@@ -44,6 +44,7 @@ next-env.d.ts
 app.log
 *.textClipping
 test-mcp.mjs
+Change-log-Gemini.md
 
 # Specific User Folder
 /c34ca60659a966bab2b86ebeb7b40beb0d5961e06cd53560eba4fff7a12d5630-2025-12-08-19-28-11-26e2643174b8473ea08e0aad7c97d587

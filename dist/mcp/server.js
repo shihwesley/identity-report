@@ -1,140 +1,45 @@
 /**
  * Profile Context Protocol (PCP) MCP Server
- * 
+ *
  * An MCP server that exposes the user's portable AI profile to any connected AI model.
  * This enables AI models to understand the user's context, preferences, and history.
- * 
+ *
  * Protocol Version: 2024-11-05 (MCP Standard)
  */
-
 import * as fs from 'fs';
 import * as path from 'path';
-import {
-    PortableProfile,
-    Conversation,
-    MemoryFragment,
-    UserInsight
-} from '../types';
 import { vault } from '../vault/manager';
 import { SummarizationService } from '../services/summarizer';
-
-// --- Types ---
-
-interface BaseMcpRequest {
-    jsonrpc: '2.0';
-    id: number | string;
-}
-
-interface InitializeRequest extends BaseMcpRequest {
-    method: 'initialize';
-    params?: {
-        protocolVersion?: string;
-        capabilities?: any;
-        clientInfo?: {
-            name: string;
-            version: string;
-        };
-    };
-}
-
-interface InitializedNotification extends BaseMcpRequest {
-    method: 'notifications/initialized';
-    params?: any;
-}
-
-interface ListResourcesRequest extends BaseMcpRequest {
-    method: 'resources/list';
-    params?: {
-        cursor?: string;
-    };
-}
-
-interface ReadResourceRequest extends BaseMcpRequest {
-    method: 'resources/read';
-    params: {
-        uri: string;
-    };
-}
-
-interface ListToolsRequest extends BaseMcpRequest {
-    method: 'tools/list';
-    params?: {
-        cursor?: string;
-    };
-}
-
-interface CallToolRequest extends BaseMcpRequest {
-    method: 'tools/call';
-    params: {
-        name: string;
-        arguments?: Record<string, any>;
-    };
-}
-
-interface ListPromptsRequest extends BaseMcpRequest {
-    method: 'prompts/list';
-    params?: {
-        cursor?: string;
-    };
-}
-
-type McpRequest =
-    | InitializeRequest
-    | InitializedNotification
-    | ListResourcesRequest
-    | ReadResourceRequest
-    | ListToolsRequest
-    | CallToolRequest
-    | ListPromptsRequest;
-
-interface McpResponse {
-    jsonrpc: '2.0';
-    id: number | string;
-    result?: any;
-    error?: {
-        code: number;
-        message: string;
-        data?: any;
-    };
-}
-
 // --- Configuration ---
 const VAULT_PATH = process.env.VAULT_PATH || path.join(process.env.HOME || '', '.profile-vault');
 const DEBUG = process.env.DEBUG === 'true';
-
-function log(...args: any[]) {
+function log(...args) {
     if (DEBUG) {
         console.error('[PCP-MCP]', ...args);
     }
 }
-
 // --- Vault Implementation ---
-
 class ProfileVault {
-    private profile: PortableProfile;
-
     constructor() {
         this.profile = this.initDefaultProfile();
         this.loadData();
     }
-
-    private loadData() {
+    loadData() {
         // Load from file system or use defaults
         const dataPath = path.join(VAULT_PATH, 'profile.json');
-
         if (fs.existsSync(dataPath)) {
             try {
                 const data = fs.readFileSync(dataPath, 'utf8');
                 this.profile = JSON.parse(data);
                 log('Loaded profile from:', dataPath);
-            } catch (e) {
-                log('Error loading profile:', (e as Error).message);
+            }
+            catch (e) {
+                log('Error loading profile:', e.message);
                 this.profile = this.initDefaultProfile();
             }
         }
     }
-
-    private initDefaultProfile(): PortableProfile {
+    initDefaultProfile() {
         return {
             identity: {
                 displayName: 'User',
@@ -152,57 +57,48 @@ class ProfileVault {
             shortTermMemory: [],
             longTermMemory: [],
             projects: [],
-            insights: [],
-            activeGrants: []
+            insights: []
         };
     }
-
-    async readResource(uri: string): Promise<any> {
+    async readResource(uri) {
         switch (uri) {
             case 'profile://identity':
                 return this.profile.identity;
-
             case 'profile://preferences':
                 return {
                     preferences: this.profile.preferences,
                     activeCount: this.profile.preferences.filter(p => p.isEnabled).length
                 };
-
             case 'profile://memory/recent':
                 return {
                     memories: this.profile.shortTermMemory ? this.profile.shortTermMemory.slice(-20) : [],
                     count: this.profile.shortTermMemory ? Math.min(20, this.profile.shortTermMemory.length) : 0
                 };
-
             case 'profile://memory/all':
                 return {
                     memories: [...(this.profile.shortTermMemory || []), ...(this.profile.longTermMemory || [])],
                     totalCount: (this.profile.shortTermMemory?.length || 0) + (this.profile.longTermMemory?.length || 0)
                 };
-
             case 'profile://insights':
                 return {
                     insights: this.profile.insights || [],
                     categories: this.categorizeInsights()
                 };
-
             case 'profile://conversations/recent':
                 return {
                     conversations: (this.profile.conversations || [])
                         .slice(-10)
                         .map(c => ({
-                            id: c.id,
-                            title: c.title,
-                            provider: c.metadata?.provider,
-                            messageCount: c.metadata?.messageCount,
-                            createdAt: c.metadata?.createdAt
-                        })),
+                        id: c.id,
+                        title: c.title,
+                        provider: c.metadata?.provider,
+                        messageCount: c.metadata?.messageCount,
+                        createdAt: c.metadata?.createdAt
+                    })),
                     totalCount: (this.profile.conversations || []).length
                 };
-
             case 'profile://stats':
                 return this.getStats();
-
             default:
                 // Handle parameterized URIs
                 if (uri.startsWith('profile://conversations/')) {
@@ -216,37 +112,28 @@ class ProfileVault {
                 return { error: 'Resource not found', uri };
         }
     }
-
-    async callTool(name: string, args: any): Promise<any> {
+    async callTool(name, args) {
         switch (name) {
             case 'search_memory':
                 return this.searchMemory(args.query, args.limit || 10);
-
             case 'add_memory':
                 return this.addMemory(args);
-
             case 'get_context_for_task':
                 return this.getContextForTask(args.task_description);
-
             case 'get_conversation_history':
                 return this.getConversationHistory(args.topic, args.provider || 'all');
-
             case 'archive_conversation':
                 return this.archiveConversation(args);
-
             case 'toggle_auto_archive':
                 return this.setAutoArchive(args.enabled);
-
             case 'sync_vault':
                 const jwt = process.env.PINATA_JWT;
                 if (!jwt) {
                     return { error: 'PINATA_JWT environment variable not set. Cannot sync to cloud.' };
                 }
                 return vault.syncToCloud({ pinataJwt: jwt });
-
             case 'toggle_auto_sync':
                 return this.setAutoSync(args.enabled);
-
             case 'analyze_vault':
                 // AI calls this to get structure, then generates summary itself
                 const allConversations = await vault.getConversations();
@@ -256,32 +143,21 @@ class ProfileVault {
                     clusters: clusters,
                     hint: "Use these clusters to generate a summary for the user. Group by 'topic' and mention duplicates."
                 };
-
             case 'grant_access':
-                return vault.grantAccess(
-                    args.grantee,
-                    args.permissions || ['read_memory'],
-                    args.durationSeconds || 3600 // Default 1 hour
+                return vault.grantAccess(args.grantee, args.permissions || ['read_memory'], args.durationSeconds || 3600 // Default 1 hour
                 );
-
             default:
                 return { error: 'Tool not found', name };
         }
     }
-
     // --- Tool Implementations ---
-
-    private searchMemory(query: string, limit = 10) {
+    searchMemory(query, limit = 10) {
         const lowerQuery = query.toLowerCase();
         const allMemories = [...(this.profile.shortTermMemory || []), ...(this.profile.longTermMemory || [])];
-
         const matches = allMemories
-            .filter(m =>
-                m.content.toLowerCase().includes(lowerQuery) ||
-                m.tags.some(t => t.toLowerCase().includes(lowerQuery))
-            )
+            .filter(m => m.content.toLowerCase().includes(lowerQuery) ||
+            m.tags.some(t => t.toLowerCase().includes(lowerQuery)))
             .slice(0, limit);
-
         return {
             query,
             matches,
@@ -289,9 +165,8 @@ class ProfileVault {
             totalSearched: allMemories.length
         };
     }
-
-    private addMemory(args: any) {
-        const memory: MemoryFragment = {
+    addMemory(args) {
+        const memory = {
             id: `mem_${Date.now()}_${Math.random().toString(36).substr(2, 5)}`,
             timestamp: new Date().toISOString(),
             content: args.content,
@@ -302,54 +177,42 @@ class ProfileVault {
             confidence: 0.9,
             // embedding: [] // Removed property not in type
         };
-
         if (!this.profile.shortTermMemory) {
             this.profile.shortTermMemory = [];
         }
-
         this.profile.shortTermMemory.push(memory);
-
         // Move to long-term if buffer full
         if (this.profile.shortTermMemory.length > 50) {
-            if (!this.profile.longTermMemory) this.profile.longTermMemory = [];
+            if (!this.profile.longTermMemory)
+                this.profile.longTermMemory = [];
             const toMove = this.profile.shortTermMemory.splice(0, 20);
             this.profile.longTermMemory.push(...toMove);
         }
-
         this.saveProfile();
-
         return {
             success: true,
             memory,
             message: 'Memory stored successfully'
         };
     }
-
-    private getContextForTask(taskDescription: string) {
+    getContextForTask(taskDescription) {
         // Search memories for relevant context
         const memoryResults = this.searchMemory(taskDescription, 5);
-
         // Search conversations
         const relevantConvs = (this.profile.conversations || [])
-            .filter(c =>
-                c.title.toLowerCase().includes(taskDescription.toLowerCase()) ||
-                c.tags?.some(t => taskDescription.toLowerCase().includes(t.toLowerCase()))
-            )
+            .filter(c => c.title.toLowerCase().includes(taskDescription.toLowerCase()) ||
+            c.tags?.some(t => taskDescription.toLowerCase().includes(t.toLowerCase())))
             .slice(0, 3)
             .map(c => ({
-                id: c.id,
-                title: c.title,
-                provider: c.metadata?.provider,
-                summary: c.summary || 'No summary available'
-            }));
-
+            id: c.id,
+            title: c.title,
+            provider: c.metadata?.provider,
+            summary: c.summary || 'No summary available'
+        }));
         // Get relevant insights
         const relevantInsights = (this.profile.insights || [])
-            .filter(i =>
-                i.content.toLowerCase().includes(taskDescription.toLowerCase())
-            )
+            .filter(i => i.content.toLowerCase().includes(taskDescription.toLowerCase()))
             .slice(0, 5);
-
         return {
             task: taskDescription,
             context: {
@@ -361,21 +224,15 @@ class ProfileVault {
             hint: 'Use this context to personalize your response to the user'
         };
     }
-
-    private getConversationHistory(topic: string, provider = 'all') {
+    getConversationHistory(topic, provider = 'all') {
         let conversations = this.profile.conversations || [];
-
         if (provider !== 'all') {
             conversations = conversations.filter(c => c.metadata?.provider === provider);
         }
-
         const matching = conversations
-            .filter(c =>
-                c.title.toLowerCase().includes(topic.toLowerCase()) ||
-                c.tags?.some(t => t.toLowerCase().includes(topic.toLowerCase()))
-            )
+            .filter(c => c.title.toLowerCase().includes(topic.toLowerCase()) ||
+            c.tags?.some(t => t.toLowerCase().includes(topic.toLowerCase())))
             .slice(0, 5);
-
         return {
             topic,
             provider: provider === 'all' ? 'all providers' : provider,
@@ -391,22 +248,18 @@ class ProfileVault {
             count: matching.length
         };
     }
-
     // --- Helper Methods ---
-
-    private categorizeInsights() {
-        const categories: Record<string, number> = {};
+    categorizeInsights() {
+        const categories = {};
         for (const insight of (this.profile.insights || [])) {
             const cat = insight.category || 'other';
             categories[cat] = (categories[cat] || 0) + 1;
         }
         return categories;
     }
-
-    private getStats() {
+    getStats() {
         const convs = this.profile.conversations || [];
         const providers = new Set(convs.map(c => c.metadata?.provider).filter(Boolean));
-
         return {
             identity: {
                 name: this.profile.identity.fullName,
@@ -430,16 +283,14 @@ class ProfileVault {
             }
         };
     }
-
-    private getConversation(id: string) {
+    getConversation(id) {
         const conv = (this.profile.conversations || []).find(c => c.id === id);
         if (!conv) {
             return { error: 'Conversation not found', id };
         }
         return conv;
     }
-
-    private saveProfile() {
+    saveProfile() {
         try {
             if (!fs.existsSync(VAULT_PATH)) {
                 fs.mkdirSync(VAULT_PATH, { recursive: true });
@@ -447,21 +298,16 @@ class ProfileVault {
             const dataPath = path.join(VAULT_PATH, 'profile.json');
             fs.writeFileSync(dataPath, JSON.stringify(this.profile, null, 2));
             log('Profile saved to:', dataPath);
-        } catch (e) {
-            log('Error saving profile:', (e as Error).message);
+        }
+        catch (e) {
+            log('Error saving profile:', e.message);
         }
     }
-    async archiveConversation(args: {
-        title: string;
-        messages: any[];
-        provider?: string;
-        model?: string;
-        summary?: string;
-    }): Promise<any> {
-        const conversation: Conversation = {
+    async archiveConversation(args) {
+        const conversation = {
             id: `conv_${Date.now()}_${Math.random().toString(36).substr(2, 5)}`,
             title: args.title,
-            messages: args.messages.map((m: any) => ({
+            messages: args.messages.map((m) => ({
                 id: m.id || `msg_${Date.now()}_${Math.random().toString(36).substr(2, 5)}`,
                 role: m.role,
                 content: m.content,
@@ -472,25 +318,22 @@ class ProfileVault {
                 }
             })),
             metadata: {
-                provider: (args.provider || 'mcp-archived') as any,
+                provider: (args.provider || 'mcp-archived'),
                 model: args.model || 'unknown',
                 createdAt: Date.now(),
                 updatedAt: Date.now(),
                 importedAt: Date.now(),
                 messageCount: args.messages.length,
-                wordCount: args.messages.reduce((sum: number, m: any) => sum + (m.content?.split(' ').length || 0), 0)
+                wordCount: args.messages.reduce((sum, m) => sum + (m.content?.split(' ').length || 0), 0)
             },
             summary: args.summary,
             tags: []
         };
-
         if (!this.profile.conversations) {
             this.profile.conversations = [];
         }
-
         this.profile.conversations.push(conversation);
         this.saveProfile();
-
         // Check for Auto-Sync Preference
         const autoSync = this.profile.preferences.find(p => p.key === 'Auto-Sync' && p.isEnabled);
         if (autoSync) {
@@ -501,22 +344,20 @@ class ProfileVault {
                 vault.syncToCloud({ pinataJwt: jwt })
                     .then(({ cid, txHash }) => log(`Auto-Sync Complete. CID: ${cid}, Tx: ${txHash}`))
                     .catch(err => log('Auto-Sync Failed:', err));
-            } else {
+            }
+            else {
                 log('Auto-Sync Skipped: PINATA_JWT not set');
             }
         }
-
         return {
             success: true,
             id: conversation.id,
             message: `Conversation '${args.title}' archived successfully.${autoSync ? ' Background sync started.' : ''}`
         };
     }
-
-    async setAutoSync(enabled: boolean): Promise<any> {
+    async setAutoSync(enabled) {
         const prefKey = 'Auto-Sync';
         let pref = this.profile.preferences.find(p => p.key === prefKey);
-
         if (!pref) {
             pref = {
                 id: `pref_${Date.now()}_sync`,
@@ -526,18 +367,16 @@ class ProfileVault {
                 isEnabled: enabled
             };
             this.profile.preferences.push(pref);
-        } else {
+        }
+        else {
             pref.isEnabled = enabled;
         }
-
         this.saveProfile();
         return { success: true, enabled, message: `Auto-Sync ${enabled ? 'Enabled' : 'Disabled'}` };
     }
-
-    async setAutoArchive(enabled: boolean): Promise<any> {
+    async setAutoArchive(enabled) {
         const prefKey = 'Auto-Archive Chats';
         let pref = this.profile.preferences.find(p => p.key === prefKey);
-
         if (!pref) {
             pref = {
                 id: `pref_${Date.now()}`,
@@ -547,95 +386,76 @@ class ProfileVault {
                 isEnabled: enabled
             };
             this.profile.preferences.push(pref);
-        } else {
+        }
+        else {
             pref.isEnabled = enabled;
         }
-
         this.saveProfile();
         return { success: true, enabled };
     }
 }
-
-// --- Transports ---
-
-interface McpTransport {
-    start(handler: (req: McpRequest) => Promise<void>): Promise<void>;
-    send(response: McpResponse): Promise<void>;
-}
-
-class StdioTransport implements McpTransport {
-    private buffer: string = '';
-
-    async start(handler: (req: McpRequest) => Promise<void>): Promise<void> {
+class StdioTransport {
+    constructor() {
+        this.buffer = '';
+    }
+    async start(handler) {
         process.stdin.setEncoding('utf8');
         process.stdin.on('data', async (chunk) => {
             this.buffer += chunk.toString();
             const lines = this.buffer.split('\n');
             this.buffer = lines.pop() || '';
-
             for (const line of lines) {
                 if (line.trim()) {
                     try {
-                        const req = JSON.parse(line) as McpRequest;
+                        const req = JSON.parse(line);
                         await handler(req);
-                    } catch (e) {
-                        log('Invalid JSON:', (e as Error).message);
+                    }
+                    catch (e) {
+                        log('Invalid JSON:', e.message);
                     }
                 }
             }
         });
-
         // Keep process alive
         return new Promise(() => { });
     }
-
-    async send(response: McpResponse): Promise<void> {
+    async send(response) {
         process.stdout.write(JSON.stringify(response) + '\n');
     }
 }
-
 import * as http from 'http';
 import { randomUUID } from 'crypto';
-
-class SseTransport implements McpTransport {
-    private port: number;
-    private clients: Map<string, http.ServerResponse> = new Map();
-    // Map request IDs to session IDs to route responses back to the correct client
-    private requestSessionMap: Map<string | number, string> = new Map();
-
-    constructor(port: number = 3001) {
+class SseTransport {
+    constructor(port = 3001) {
+        this.clients = new Map();
+        // Map request IDs to session IDs to route responses back to the correct client
+        this.requestSessionMap = new Map();
         this.port = port;
     }
-
-    async start(handler: (req: McpRequest) => Promise<void>): Promise<void> {
+    async start(handler) {
         const server = http.createServer(async (req, res) => {
             // CORS Headers
             res.setHeader('Access-Control-Allow-Origin', '*');
             res.setHeader('Access-Control-Allow-Methods', 'POST, GET, OPTIONS');
             res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
-
             if (req.method === 'OPTIONS') {
                 res.writeHead(200);
                 res.end();
                 return;
             }
-
             // SSE Endpoint
             if (req.url === '/sse') {
                 this.handleSseConnection(req, res);
                 return;
             }
-
             // Message Endpoint
             if (req.url === '/messages' && req.method === 'POST') {
                 await this.handlePostMessage(req, res, handler);
                 return;
             }
-
             res.writeHead(404);
             res.end('Not Found');
         });
-
         return new Promise((resolve) => {
             server.listen(this.port, () => {
                 log(`SSE Transport listening on http://localhost:${this.port}`);
@@ -645,31 +465,25 @@ class SseTransport implements McpTransport {
             });
         });
     }
-
-    private handleSseConnection(req: http.IncomingMessage, res: http.ServerResponse) {
+    handleSseConnection(req, res) {
         const sessionId = randomUUID();
-
         res.writeHead(200, {
             'Content-Type': 'text/event-stream',
             'Cache-Control': 'no-cache',
             'Connection': 'keep-alive'
         });
-
         // Store client connection
         this.clients.set(sessionId, res);
         log(`Client connected: ${sessionId}`);
-
         // Send endpoint URL event
         const endpointEvent = {
             type: 'endpoint',
             endpoint: `http://localhost:${this.port}/messages?sessionId=${sessionId}`
         };
         res.write(`event: endpoint\ndata: ${JSON.stringify(endpointEvent)}\n\n`);
-
         req.on('close', () => {
             this.clients.delete(sessionId);
             log(`Client disconnected: ${sessionId}`);
-
             // Clean up any pending requests for this session (optional but good practice)
             for (const [reqId, sessId] of this.requestSessionMap.entries()) {
                 if (sessId === sessionId) {
@@ -678,45 +492,37 @@ class SseTransport implements McpTransport {
             }
         });
     }
-
-    private async handlePostMessage(req: http.IncomingMessage, res: http.ServerResponse, handler: (req: McpRequest) => Promise<void>) {
+    async handlePostMessage(req, res, handler) {
         let body = '';
-
         req.on('data', chunk => body += chunk);
         req.on('end', async () => {
             try {
                 const url = new URL(req.url || '', `http://localhost:${this.port}`);
                 const sessionId = url.searchParams.get('sessionId');
-
                 if (!sessionId || !this.clients.has(sessionId)) {
                     log('Invalid or missing sessionId in POST request');
                     res.writeHead(401);
                     res.end('Unauthorized: Invalid Session ID');
                     return;
                 }
-
-                const request = JSON.parse(body) as McpRequest;
-
+                const request = JSON.parse(body);
                 // Map the request ID to this session so we know where to send the response
                 if (request.id !== undefined) {
                     this.requestSessionMap.set(request.id, sessionId);
                 }
-
                 await handler(request);
-
                 res.writeHead(202); // Accepted
                 res.end('Accepted');
-            } catch (e) {
-                log('Error handling POST:', (e as Error).message);
+            }
+            catch (e) {
+                log('Error handling POST:', e.message);
                 res.writeHead(400);
                 res.end('Bad Request');
             }
         });
     }
-
-    async send(response: McpResponse): Promise<void> {
+    async send(response) {
         const id = response.id;
-
         if (id === undefined) {
             // If it's a notification (no ID), typically we might broadcast or need distinct handling.
             // For now, let's log safe warning or broadcast if critical.
@@ -728,9 +534,7 @@ class SseTransport implements McpTransport {
             }
             return;
         }
-
         const sessionId = this.requestSessionMap.get(id);
-
         if (sessionId) {
             const client = this.clients.get(sessionId);
             if (client) {
@@ -738,36 +542,27 @@ class SseTransport implements McpTransport {
                 client.write(`event: message\ndata: ${payload}\n\n`);
                 this.requestSessionMap.delete(id); // Clean up
                 return;
-            } else {
+            }
+            else {
                 log(`Client not found for session ${sessionId}, creating orphan response`);
                 this.requestSessionMap.delete(id); // Cleanup dead session ref
             }
         }
-
         log(`No active session found for response ID: ${id}. Dropping message.`);
     }
 }
-
 // --- MCP Server Logic ---
-
 class ProfileMcpServer {
-    private vault: ProfileVault;
-    private transport: McpTransport;
-
-    constructor(vault: ProfileVault, transport: McpTransport) {
+    constructor(vault, transport) {
         this.vault = vault;
         this.transport = transport;
-
         log('Server logic initialized');
     }
-
     async start() {
         await this.transport.start((req) => this.handleRequest(req));
     }
-
-    private async handleRequest(req: McpRequest) {
+    async handleRequest(req) {
         log('Request:', req.method, req.id);
-
         try {
             switch (req.method) {
                 case 'initialize':
@@ -786,17 +581,16 @@ class ProfileMcpServer {
                     return this.handlePromptsList(req);
                 default:
                     // req is never here because we handled all known methods
-                    const unknownReq = req as any;
+                    const unknownReq = req;
                     this.sendError(unknownReq.id, -32601, `Method not found: ${unknownReq.method}`);
             }
-        } catch (error) {
-            this.sendError(req.id, -32603, (error as Error).message);
+        }
+        catch (error) {
+            this.sendError(req.id, -32603, error.message);
         }
     }
-
     // --- Protocol Handlers ---
-
-    private async handleInitialize(req: InitializeRequest) {
+    async handleInitialize(req) {
         this.sendResponse(req.id, {
             protocolVersion: '2024-11-05',
             capabilities: {
@@ -814,8 +608,7 @@ class ProfileMcpServer {
             }
         });
     }
-
-    private async handleResourcesList(req: ListResourcesRequest) {
+    async handleResourcesList(req) {
         const resources = [
             {
                 uri: 'profile://identity',
@@ -860,29 +653,23 @@ class ProfileMcpServer {
                 mimeType: 'application/json'
             }
         ];
-
         this.sendResponse(req.id, { resources });
     }
-
-    private async handleResourcesRead(req: ReadResourceRequest) {
+    async handleResourcesRead(req) {
         const { uri } = req.params || {};
-
         if (!uri) {
             return this.sendError(req.id, -32602, 'Missing uri parameter');
         }
-
         const content = await this.vault.readResource(uri);
-
         this.sendResponse(req.id, {
             contents: [{
-                uri,
-                mimeType: 'application/json',
-                text: JSON.stringify(content, null, 2)
-            }]
+                    uri,
+                    mimeType: 'application/json',
+                    text: JSON.stringify(content, null, 2)
+                }]
         });
     }
-
-    private async handleToolsList(req: ListToolsRequest) {
+    async handleToolsList(req) {
         const tools = [
             {
                 name: 'search_memory',
@@ -1039,28 +826,22 @@ class ProfileMcpServer {
                 }
             }
         ];
-
         this.sendResponse(req.id, { tools });
     }
-
-    private async handleToolsCall(req: CallToolRequest) {
+    async handleToolsCall(req) {
         const { name, arguments: args } = req.params || {};
-
         if (!name) {
             return this.sendError(req.id, -32602, 'Missing tool name');
         }
-
         const result = await this.vault.callTool(name, args || {});
-
         this.sendResponse(req.id, {
             content: [{
-                type: 'text',
-                text: JSON.stringify(result, null, 2)
-            }]
+                    type: 'text',
+                    text: JSON.stringify(result, null, 2)
+                }]
         });
     }
-
-    private async handlePromptsList(req: ListPromptsRequest) {
+    async handlePromptsList(req) {
         const prompts = [
             {
                 name: 'introduce_user',
@@ -1079,46 +860,36 @@ class ProfileMcpServer {
                 ]
             }
         ];
-
         this.sendResponse(req.id, { prompts });
     }
-
     // --- Response Helpers ---
-
-    private async sendResponse(id: number | string, result: any) {
-        const msg: McpResponse = { jsonrpc: '2.0', id, result };
+    async sendResponse(id, result) {
+        const msg = { jsonrpc: '2.0', id, result };
         await this.transport.send(msg);
         log('Response sent for id:', id);
     }
-
-    private async sendError(id: number | string, code: number, message: string) {
-        const msg: McpResponse = { jsonrpc: '2.0', id, error: { code, message } };
+    async sendError(id, code, message) {
+        const msg = { jsonrpc: '2.0', id, error: { code, message } };
         await this.transport.send(msg);
         log('Error sent:', code, message);
     }
 }
-
 // --- Start Server ---
-
 if (require.main === module) {
     const vault = new ProfileVault();
-
     // Select transport based on environment
     const transportType = process.env.MCP_TRANSPORT || 'stdio';
-    let transport: McpTransport;
-
+    let transport;
     if (transportType === 'sse') {
         const port = parseInt(process.env.PORT || '3001');
         transport = new SseTransport(port);
-    } else {
+    }
+    else {
         transport = new StdioTransport();
     }
-
     const server = new ProfileMcpServer(vault, transport);
-
     log(`Profile Context Protocol MCP Server running in ${transportType} mode...`);
     log('Vault path:', VAULT_PATH);
-
     server.start().catch((err) => {
         log('Server error:', err);
         process.exit(1);

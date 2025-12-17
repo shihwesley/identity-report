@@ -1,0 +1,13 @@
+node_modules
+.next
+out
+build
+*.log
+.env*
+.git
+.DS_Store
+src/lib/realProfile.json
+artifacts
+*.textClipping
+test-mcp.mjs
+c34ca60659a966bab2b86ebeb7b40beb0d5961e06cd53560eba4fff7a12d5630-2025-12-08-19-28-11-26e2643174b8473ea08e0aad7c97d587

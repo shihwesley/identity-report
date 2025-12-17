@@ -108,6 +108,16 @@ Your data is encrypted at rest. We use:
 - **Ed25519** for digital signatures and identity verification.
 - **Local Storage (IndexedDB)** by default, ensuring data never leaves your device unless you explicitly publish it.
 
+## 🚀 Deployment & CI/CD
+
+Identity Report is designed for local-first privacy but can be deployed to the cloud for persistent, cross-device access.
+
+- **Dockerized**: Multi-stage build for UI and MCP SSE.
+- **CI/CD**: Automated via GitHub Actions (GHCR tagging).
+- **Persistent Storage**: Uses `VAULT_PATH` environment variable for encrypted data sovereignty.
+
+See [deployment.md](./deployment.md) for full instructions on cloud hosting and Docker setup.
+
 ## License
 
 MIT

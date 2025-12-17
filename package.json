@@ -5,7 +5,9 @@
   "scripts": {
     "dev": "next dev",
     "build": "next build",
+    "build:mcp": "esbuild src/lib/mcp/server.ts --bundle --platform=node --outfile=dist/server.js --external:fsevents --external:canvas",
     "start": "next start",
+    "start:mcp": "NODE_ENV=production MCP_TRANSPORT=sse node dist/server.js",
     "lint": "eslint"
   },
   "dependencies": {
@@ -23,6 +25,7 @@
     "viem": "^2.41.2"
   },
   "devDependencies": {
+    "esbuild": "^0.27.2",
     "@tailwindcss/postcss": "^4",
     "@types/bip39": "^2.4.2",
     "@types/node": "^20",
