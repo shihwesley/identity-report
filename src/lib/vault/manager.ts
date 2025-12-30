@@ -26,6 +26,7 @@ import {
 import { encryptData, decryptData } from './crypto';
 import { AccessGrant } from '@/lib/types';
 import { storage } from '@/lib/storage/indexeddb';
+import { logger } from '@/lib/logger';
 
 export class VaultManager {
     private keys: WalletKeys | null = null;
@@ -181,6 +182,9 @@ export class VaultManager {
             this._state.lastSynced = Date.now();
             this.updateStats();
 
+            logger.info('Vault unlocked successfully', { did: identity.did });
+            logger.audit('Vault unlocked', { did: identity.did });
+
             return this._state.profile!;
         } catch (error) {
             this._state.status = 'locked';
@@ -223,6 +227,9 @@ export class VaultManager {
             this.encryptionKey = null;
             this._state.profile = null;
             this._state.status = 'locked';
+
+            logger.info('Vault locked successfully');
+            logger.audit('Vault locked');
         } catch (error) {
             this._state.status = 'unlocked';
             throw error;
@@ -410,14 +417,15 @@ export class VaultManager {
         const { blob, filename } = await this.exportVaultBackup();
 
         // 2. Upload to IPFS
-        console.log('Uploading vault to IPFS...');
+        logger.info('Uploading vault to IPFS');
         const cid = await ipfs.upload(blob, filename);
-        console.log('Vault uploaded. CID:', cid);
+        logger.info('Vault uploaded to IPFS', { cid });
 
         // 3. Update Registry
-        console.log('Updating Blockchain Registry...');
+        logger.info('Updating Blockchain Registry');
         const txHash = await registry.updateProfile(this._state.did, cid);
-        console.log('Registry updated. Tx:', txHash);
+        logger.info('Registry update complete', { txHash });
+        logger.audit('Vault synced to cloud', { cid, txHash });
 
         return { cid, txHash };
     }
@@ -474,6 +482,10 @@ export class VaultManager {
 
         // Persist the grant
         this._state.profile.activeGrants.push(signedGrant);
+
+        logger.info('Access grant issued', { grantee, permissions });
+        logger.audit('Access grant issued', { grantee, permissions, grantId: grant.id });
+
         // We need a way to save just the profile or grants part.
         // For now, we will rely on the fact that 'lock()' saves everything, 
         // OR we should add a specific save method. 

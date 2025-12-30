@@ -1,50 +1,77 @@
 // This is a simplified wrapper around the Web Crypto API for the PoC.
 // In a real app, we would use 'ethers.js' or 'tweetnacl' for easier key management.
 
+import { VAULT_CONSTANTS, CRYPTO_CONSTANTS } from '../constants';
+
+/**
+ * Get the crypto implementation for the current environment.
+ * Works in both browser (window.crypto) and Node.js 20+ (globalThis.crypto).
+ */
+function getCrypto(): Crypto {
+    // Browser environment
+    if (typeof window !== 'undefined' && window.crypto) {
+        return window.crypto;
+    }
+    // Node.js 20+ has globalThis.crypto
+    if (typeof globalThis !== 'undefined' && globalThis.crypto) {
+        return globalThis.crypto;
+    }
+    throw new Error('No crypto implementation available. Ensure you are running Node.js 20+ or a modern browser.');
+}
+
+/**
+ * Get random values in a cross-platform way.
+ */
+function getRandomValues(array: Uint8Array): Uint8Array {
+    return getCrypto().getRandomValues(array);
+}
+
 export async function generateKeyPair(): Promise<CryptoKeyPair> {
-    return window.crypto.subtle.generateKey(
+    return getCrypto().subtle.generateKey(
         {
-            name: "ECDSA",
-            namedCurve: "P-256",
+            name: CRYPTO_CONSTANTS.ECDSA_CURVE === 'P-256' ? 'ECDSA' : 'ECDSA',
+            namedCurve: CRYPTO_CONSTANTS.ECDSA_CURVE,
         },
         true,
-        ["sign", "verify"]
+        ['sign', 'verify']
     );
 }
 
 export async function derivedKeyFromPassword(password: string, salt: Uint8Array): Promise<CryptoKey> {
     const enc = new TextEncoder();
-    const keyMaterial = await window.crypto.subtle.importKey(
-        "raw",
+    const crypto = getCrypto();
+    const keyMaterial = await crypto.subtle.importKey(
+        'raw',
         enc.encode(password),
-        { name: "PBKDF2" },
+        { name: 'PBKDF2' },
         false,
-        ["deriveKey"]
+        ['deriveKey']
     );
 
-    return window.crypto.subtle.deriveKey(
+    return crypto.subtle.deriveKey(
         {
-            name: "PBKDF2",
-            salt: salt as any,
-            iterations: 100000,
-            hash: "SHA-256",
+            name: 'PBKDF2',
+            salt: salt as BufferSource,
+            iterations: VAULT_CONSTANTS.PBKDF2_ITERATIONS,
+            hash: CRYPTO_CONSTANTS.HASH_ALGORITHM,
         },
         keyMaterial,
-        { name: "AES-GCM", length: 256 },
+        { name: CRYPTO_CONSTANTS.SYMMETRIC_ALGORITHM, length: VAULT_CONSTANTS.AES_KEY_LENGTH },
         true,
-        ["encrypt", "decrypt"]
+        ['encrypt', 'decrypt']
     );
 }
 
 export async function encryptData(data: string, key: CryptoKey): Promise<{ ciphertext: string; iv: string }> {
     const enc = new TextEncoder();
-    const iv = window.crypto.getRandomValues(new Uint8Array(12));
+    const crypto = getCrypto();
+    const iv = getRandomValues(new Uint8Array(VAULT_CONSTANTS.IV_LENGTH));
 
     const encodedData = enc.encode(data);
-    const encrypted = await window.crypto.subtle.encrypt(
+    const encrypted = await crypto.subtle.encrypt(
         {
-            name: "AES-GCM",
-            iv: iv,
+            name: CRYPTO_CONSTANTS.SYMMETRIC_ALGORITHM,
+            iv: iv as BufferSource,
         },
         key,
         encodedData
@@ -62,9 +89,9 @@ export async function decryptData(ciphertext: string, iv: string, key: CryptoKey
     const ivBuffer = Buffer.from(iv, 'base64');
 
     try {
-        const decrypted = await window.crypto.subtle.decrypt(
+        const decrypted = await getCrypto().subtle.decrypt(
             {
-                name: "AES-GCM",
+                name: CRYPTO_CONSTANTS.SYMMETRIC_ALGORITHM,
                 iv: ivBuffer,
             },
             key,
@@ -72,16 +99,16 @@ export async function decryptData(ciphertext: string, iv: string, key: CryptoKey
         );
         return dec.decode(decrypted);
     } catch (e) {
-        throw new Error("Decryption failed: Invalid key or corrupted data");
+        throw new Error('Decryption failed: Invalid key or corrupted data');
     }
 }
 
 export async function signMessage(privateKey: CryptoKey, message: string): Promise<string> {
     const enc = new TextEncoder();
-    const signature = await window.crypto.subtle.sign(
+    const signature = await getCrypto().subtle.sign(
         {
-            name: "ECDSA",
-            hash: { name: "SHA-256" },
+            name: 'ECDSA',
+            hash: { name: CRYPTO_CONSTANTS.HASH_ALGORITHM },
         },
         privateKey,
         enc.encode(message)
@@ -109,12 +136,13 @@ export async function encryptBlob(
     key: CryptoKey,
     metadata: { id: string; type: EncryptedBlob['type']; name: string; mimeType: string }
 ): Promise<EncryptedBlob> {
-    const iv = window.crypto.getRandomValues(new Uint8Array(12));
+    const crypto = getCrypto();
+    const iv = getRandomValues(new Uint8Array(VAULT_CONSTANTS.IV_LENGTH));
 
-    const encrypted = await window.crypto.subtle.encrypt(
+    const encrypted = await crypto.subtle.encrypt(
         {
-            name: "AES-GCM",
-            iv: iv,
+            name: CRYPTO_CONSTANTS.SYMMETRIC_ALGORITHM,
+            iv: iv as BufferSource,
         },
         key,
         data
@@ -136,9 +164,9 @@ export async function decryptBlob(blob: EncryptedBlob, key: CryptoKey): Promise<
     const ivBuffer = Buffer.from(blob.iv, 'base64');
 
     try {
-        return await window.crypto.subtle.decrypt(
+        return await getCrypto().subtle.decrypt(
             {
-                name: "AES-GCM",
+                name: CRYPTO_CONSTANTS.SYMMETRIC_ALGORITHM,
                 iv: ivBuffer,
             },
             key,

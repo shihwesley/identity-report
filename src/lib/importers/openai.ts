@@ -213,7 +213,6 @@ export class OpenAIImporter extends BaseImporter {
         }
 
         return result;
-        return result;
     }
 
     /**

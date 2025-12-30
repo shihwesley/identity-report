@@ -1,3 +1,5 @@
+import { logger } from '../logger';
+
 export interface StorageProvider {
     upload(data: Blob, name: string): Promise<string>;
     getGatewayUrl(cid: string): string;
@@ -14,7 +16,7 @@ export class PinataService implements StorageProvider {
         this.jwt = config.jwt || '';
 
         if (!this.jwt && (!this.apiKey || !this.apiSecret)) {
-            console.warn('PinataService initialized without credentials. Uploads will fail.');
+            logger.warn('PinataService initialized without credentials. Uploads will fail.');
         }
     }
 
@@ -61,9 +63,10 @@ export class PinataService implements StorageProvider {
             }
 
             const json = await res.json();
+            logger.info('IPFS upload successful', { name, cid: json.IpfsHash });
             return json.IpfsHash;
         } catch (error) {
-            console.error('IPFS Upload Error:', error);
+            logger.error('IPFS upload error', { name, error: (error as Error).message });
             throw error;
         }
     }

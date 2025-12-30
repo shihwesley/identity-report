@@ -105,12 +105,47 @@ export class SummarizationService {
     }
 
     /**
-     * Levienshtein-like check for exact title matches (simplified)
+     * Calculate string similarity using Levenshtein distance.
+     * Returns a value between 0 (completely different) and 1 (identical).
      */
     private static calculateStringSimilarity(s1: string, s2: string): number {
         if (s1 === s2) return 1.0;
-        // naive inclusion check for now
-        if (s1.includes(s2) || s2.includes(s1)) return 0.8;
-        return 0;
+        if (s1.length === 0 || s2.length === 0) return 0;
+
+        const maxLen = Math.max(s1.length, s2.length);
+        const distance = this.levenshteinDistance(s1, s2);
+        return 1 - (distance / maxLen);
+    }
+
+    /**
+     * Calculate Levenshtein distance between two strings.
+     * Uses dynamic programming for O(m*n) time complexity.
+     */
+    private static levenshteinDistance(s1: string, s2: string): number {
+        const m = s1.length;
+        const n = s2.length;
+
+        // Create a 2D array for memoization
+        const dp: number[][] = Array(m + 1)
+            .fill(null)
+            .map(() => Array(n + 1).fill(0));
+
+        // Initialize base cases
+        for (let i = 0; i <= m; i++) dp[i][0] = i;
+        for (let j = 0; j <= n; j++) dp[0][j] = j;
+
+        // Fill in the rest of the matrix
+        for (let i = 1; i <= m; i++) {
+            for (let j = 1; j <= n; j++) {
+                const cost = s1[i - 1] === s2[j - 1] ? 0 : 1;
+                dp[i][j] = Math.min(
+                    dp[i - 1][j] + 1,      // deletion
+                    dp[i][j - 1] + 1,      // insertion
+                    dp[i - 1][j - 1] + cost // substitution
+                );
+            }
+        }
+
+        return dp[m][n];
     }
 }
