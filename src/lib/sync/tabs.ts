@@ -335,7 +335,7 @@ export class TabSyncManager {
 
     private checkAuthority(): void {
         const now = Date.now();
-        let staleTabs: string[] = [];
+        const staleTabs: string[] = [];
 
         // Clean up stale tabs
         for (const [tabId, state] of this.tabs) {

@@ -6,7 +6,7 @@
  * Displays sync queue status and handles blocked state.
  */
 
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import {
     SyncQueue,
     SyncQueueStatus,
@@ -395,7 +395,12 @@ interface DeadLetterItemProps {
 }
 
 function DeadLetterItem({ entry, onRetry, onDismiss }: DeadLetterItemProps) {
-    const daysUntilPurge = Math.ceil((entry.purgeAt - Date.now()) / (24 * 60 * 60 * 1000));
+    // Calculate days until purge - safe impure call as value is display-only
+    const [daysUntilPurge, setDaysUntilPurge] = useState(0);
+
+    useEffect(() => {
+        setDaysUntilPurge(Math.ceil((entry.purgeAt - Date.now()) / (24 * 60 * 60 * 1000)));
+    }, [entry.purgeAt]);
 
     return (
         <div className="border dark:border-gray-700 rounded-lg p-3 space-y-2">
