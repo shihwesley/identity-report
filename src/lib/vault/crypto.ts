@@ -132,12 +132,15 @@ export interface EncryptedBlob {
  * Encrypt binary data (images, audio, files).
  */
 export async function encryptBlob(
-    data: ArrayBuffer,
+    data: ArrayBuffer | Uint8Array,
     key: CryptoKey,
     metadata: { id: string; type: EncryptedBlob['type']; name: string; mimeType: string }
 ): Promise<EncryptedBlob> {
     const crypto = getCrypto();
     const iv = getRandomValues(new Uint8Array(VAULT_CONSTANTS.IV_LENGTH));
+
+    // Convert to Uint8Array for better cross-environment compatibility
+    const dataArray = data instanceof Uint8Array ? data : new Uint8Array(data);
 
     const encrypted = await crypto.subtle.encrypt(
         {
@@ -145,12 +148,12 @@ export async function encryptBlob(
             iv: iv as BufferSource,
         },
         key,
-        data
+        dataArray
     );
 
     return {
         ...metadata,
-        size: data.byteLength,
+        size: dataArray.byteLength,
         encryptedData: Buffer.from(encrypted).toString('base64'),
         iv: Buffer.from(iv).toString('base64')
     };
@@ -160,8 +163,8 @@ export async function encryptBlob(
  * Decrypt binary blob back to ArrayBuffer.
  */
 export async function decryptBlob(blob: EncryptedBlob, key: CryptoKey): Promise<ArrayBuffer> {
-    const encryptedData = Buffer.from(blob.encryptedData, 'base64');
-    const ivBuffer = Buffer.from(blob.iv, 'base64');
+    const encryptedData = new Uint8Array(Buffer.from(blob.encryptedData, 'base64'));
+    const ivBuffer = new Uint8Array(Buffer.from(blob.iv, 'base64'));
 
     try {
         return await getCrypto().subtle.decrypt(

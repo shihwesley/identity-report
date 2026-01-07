@@ -16,7 +16,8 @@ import { AccessGrant } from '../types';
 
 // Simple hash function using Web Crypto API
 async function sha256(data: Uint8Array): Promise<Uint8Array> {
-    const hashBuffer = await crypto.subtle.digest('SHA-256', data.buffer as ArrayBuffer);
+    // Pass Uint8Array directly for better cross-environment compatibility
+    const hashBuffer = await crypto.subtle.digest('SHA-256', data);
     return new Uint8Array(hashBuffer);
 }
 

@@ -81,6 +81,17 @@ class MockBroadcastChannel {
 const windowEventListeners: Record<string, Function[]> = {};
 const documentEventListeners: Record<string, Function[]> = {};
 
+// Mock setInterval to prevent infinite loops with fake timers
+let tabIntervalId = 0;
+const tabMockIntervals = new Map<number, { callback: Function; ms: number }>();
+
+// Helper to manually trigger interval callbacks
+const runMockIntervals = () => {
+    tabMockIntervals.forEach(({ callback }) => {
+        callback();
+    });
+};
+
 const mockWindow = {
     addEventListener: vi.fn((event: string, handler: Function) => {
         if (!windowEventListeners[event]) {
@@ -93,8 +104,14 @@ const mockWindow = {
             windowEventListeners[event] = windowEventListeners[event].filter(h => h !== handler);
         }
     }),
-    setInterval: vi.fn((callback: Function, ms: number) => setInterval(callback, ms)),
-    clearInterval: vi.fn((id: number) => clearInterval(id))
+    setInterval: vi.fn((callback: Function, ms: number) => {
+        const id = ++tabIntervalId;
+        tabMockIntervals.set(id, { callback, ms });
+        return id;
+    }),
+    clearInterval: vi.fn((id: number) => {
+        tabMockIntervals.delete(id);
+    })
 };
 
 const mockDocument = {
@@ -116,6 +133,16 @@ const triggerDocumentEvent = (event: string) => {
     documentEventListeners[event]?.forEach(handler => handler());
 };
 
+// Mock global setInterval to prevent infinite loops with fake timers
+vi.stubGlobal('setInterval', (callback: Function, ms: number) => {
+    const id = ++tabIntervalId;
+    tabMockIntervals.set(id, { callback, ms });
+    return id as unknown as NodeJS.Timeout;
+});
+vi.stubGlobal('clearInterval', (id: number) => {
+    tabMockIntervals.delete(id);
+});
+
 // Setup global mocks
 vi.stubGlobal('BroadcastChannel', MockBroadcastChannel);
 vi.stubGlobal('window', mockWindow);
@@ -129,9 +156,15 @@ describe('TabSyncManager', () => {
     let manager: TabSyncManager;
 
     beforeEach(() => {
-        vi.useFakeTimers();
+        // Use fake timers but don't fake setInterval (mocked globally)
+        vi.useFakeTimers({
+            shouldAdvanceTime: false,
+            toFake: ['setTimeout', 'clearTimeout', 'Date']
+        });
         MockBroadcastChannel.reset();
         destroyTabSync();
+        tabMockIntervals.clear();
+        tabIntervalId = 0;
 
         // Clear event listeners
         Object.keys(windowEventListeners).forEach(key => {
@@ -213,7 +246,8 @@ describe('TabSyncManager', () => {
             manager = new TabSyncManager();
             manager.initialize();
 
-            // Advance timers to trigger authority check
+            // Manually trigger heartbeat interval to establish authority
+            runMockIntervals();
             vi.advanceTimersByTime(5000);
 
             expect(manager.hasWriteAuthority).toBe(true);
@@ -248,6 +282,8 @@ describe('TabSyncManager', () => {
             manager = new TabSyncManager({ onAuthorityChange });
             manager.initialize();
 
+            // Manually trigger heartbeat interval
+            runMockIntervals();
             vi.advanceTimersByTime(5000);
 
             // First tab should get authority
@@ -261,6 +297,8 @@ describe('TabSyncManager', () => {
             const manager1 = new TabSyncManager({ onAuthorityChange });
             manager1.initialize();
 
+            // Manually trigger heartbeat interval
+            runMockIntervals();
             vi.advanceTimersByTime(5000);
 
             // Manager1 should have authority
@@ -558,10 +596,13 @@ describe('TabSyncManager', () => {
             manager = new TabSyncManager();
             manager.initialize();
 
+            const initialSize = tabMockIntervals.size;
+            expect(initialSize).toBeGreaterThan(0); // Should have registered intervals
+
             manager.destroy();
 
-            // Verified by clearInterval being called
-            expect(mockWindow.clearInterval).toHaveBeenCalled();
+            // Verified by intervals being cleared from our mock map
+            expect(tabMockIntervals.size).toBe(0);
         });
 
         it('should handle being called before initialize', () => {

@@ -6,10 +6,6 @@ export default defineConfig({
   plugins: [react()],
   test: {
     globals: true,
-    environment: 'jsdom',
-    setupFiles: ['./tests/setup/vitest.setup.ts'],
-    include: ['tests/**/*.test.{ts,tsx}'],
-    exclude: ['tests/e2e/**', 'tests/contracts/**', 'node_modules/**'],
     coverage: {
       provider: 'v8',
       reporter: ['text', 'json', 'html'],
@@ -23,7 +19,34 @@ export default defineConfig({
       }
     },
     testTimeout: 10000,
-    hookTimeout: 10000
+    hookTimeout: 10000,
+    // Use project-based configuration for different environments
+    projects: [
+      {
+        // Node environment for unit tests (crypto, sync, etc. - no DOM needed)
+        extends: true,
+        test: {
+          name: 'unit',
+          environment: 'node',
+          include: [
+            'tests/unit/**/*.test.ts'
+          ],
+          exclude: ['tests/e2e/**', 'tests/contracts/**', 'node_modules/**'],
+          setupFiles: ['./tests/setup/vitest.setup.ts']
+        }
+      },
+      {
+        // jsdom environment for component tests (need DOM)
+        extends: true,
+        test: {
+          name: 'component',
+          environment: 'jsdom',
+          include: ['tests/component/**/*.test.tsx'],
+          exclude: ['node_modules/**'],
+          setupFiles: ['./tests/setup/vitest.setup.ts']
+        }
+      }
+    ]
   },
   resolve: {
     alias: {

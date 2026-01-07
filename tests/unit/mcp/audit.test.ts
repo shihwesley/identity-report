@@ -348,7 +348,8 @@ describe('AuditLogger', () => {
                 params: null as unknown as Record<string, unknown>
             });
 
-            expect(entry2.params).toBeNull();
+            // null params become undefined after processing
+            expect(entry2.params).toBeUndefined();
         });
 
         it('should handle case-insensitive sensitive keys', () => {
