@@ -283,9 +283,15 @@ describe('ConnectWallet', () => {
       const user = userEvent.setup();
       const { createWalletClient } = await import('viem');
 
+      let isConnected = false;
       (createWalletClient as ReturnType<typeof vi.fn>).mockReturnValue({
-        getAddresses: vi.fn().mockResolvedValue(['0xAbCdEf1234567890123456789012345678901234']),
-        requestAddresses: vi.fn().mockResolvedValue(['0xAbCdEf1234567890123456789012345678901234']),
+        getAddresses: vi.fn().mockImplementation(() =>
+          Promise.resolve(isConnected ? ['0xAbCdEf1234567890123456789012345678901234'] : [])
+        ),
+        requestAddresses: vi.fn().mockImplementation(() => {
+          isConnected = true;
+          return Promise.resolve(['0xAbCdEf1234567890123456789012345678901234']);
+        }),
         switchChain: vi.fn().mockResolvedValue(undefined),
         addChain: vi.fn().mockResolvedValue(undefined),
       });
@@ -304,9 +310,15 @@ describe('ConnectWallet', () => {
       const user = userEvent.setup();
       const { createWalletClient } = await import('viem');
 
+      let isConnected = false;
       (createWalletClient as ReturnType<typeof vi.fn>).mockReturnValue({
-        getAddresses: vi.fn().mockResolvedValue(['0x9876543210fedcba9876543210fedcba98765432']),
-        requestAddresses: vi.fn().mockResolvedValue(['0x9876543210fedcba9876543210fedcba98765432']),
+        getAddresses: vi.fn().mockImplementation(() =>
+          Promise.resolve(isConnected ? ['0x9876543210fedcba9876543210fedcba98765432'] : [])
+        ),
+        requestAddresses: vi.fn().mockImplementation(() => {
+          isConnected = true;
+          return Promise.resolve(['0x9876543210fedcba9876543210fedcba98765432']);
+        }),
         switchChain: vi.fn().mockResolvedValue(undefined),
         addChain: vi.fn().mockResolvedValue(undefined),
       });
@@ -362,9 +374,16 @@ describe('ConnectWallet', () => {
       const user = userEvent.setup();
       const { createWalletClient } = await import('viem');
 
+      // Initially not connected (empty getAddresses), then connected after requestAddresses
+      let isConnected = false;
       (createWalletClient as ReturnType<typeof vi.fn>).mockReturnValue({
-        getAddresses: vi.fn().mockResolvedValue(['0xAbCdEf1234567890123456789012345678901234']),
-        requestAddresses: vi.fn().mockResolvedValue(['0xAbCdEf1234567890123456789012345678901234']),
+        getAddresses: vi.fn().mockImplementation(() =>
+          Promise.resolve(isConnected ? ['0xAbCdEf1234567890123456789012345678901234'] : [])
+        ),
+        requestAddresses: vi.fn().mockImplementation(() => {
+          isConnected = true;
+          return Promise.resolve(['0xAbCdEf1234567890123456789012345678901234']);
+        }),
         switchChain: vi.fn().mockResolvedValue(undefined),
         addChain: vi.fn().mockResolvedValue(undefined),
       });
@@ -384,9 +403,15 @@ describe('ConnectWallet', () => {
       const user = userEvent.setup();
       const { createWalletClient } = await import('viem');
 
+      let isConnected = false;
       (createWalletClient as ReturnType<typeof vi.fn>).mockReturnValue({
-        getAddresses: vi.fn().mockResolvedValue(['0xAbCdEf1234567890123456789012345678901234']),
-        requestAddresses: vi.fn().mockResolvedValue(['0xAbCdEf1234567890123456789012345678901234']),
+        getAddresses: vi.fn().mockImplementation(() =>
+          Promise.resolve(isConnected ? ['0xAbCdEf1234567890123456789012345678901234'] : [])
+        ),
+        requestAddresses: vi.fn().mockImplementation(() => {
+          isConnected = true;
+          return Promise.resolve(['0xAbCdEf1234567890123456789012345678901234']);
+        }),
         switchChain: vi.fn().mockResolvedValue(undefined),
         addChain: vi.fn().mockResolvedValue(undefined),
       });
@@ -407,9 +432,15 @@ describe('ConnectWallet', () => {
       const user = userEvent.setup();
       const { createWalletClient } = await import('viem');
 
+      let isConnected = false;
       (createWalletClient as ReturnType<typeof vi.fn>).mockReturnValue({
-        getAddresses: vi.fn().mockResolvedValue(['0x1234567890123456789012345678901234567890']),
-        requestAddresses: vi.fn().mockResolvedValue(['0x1234567890123456789012345678901234567890']),
+        getAddresses: vi.fn().mockImplementation(() =>
+          Promise.resolve(isConnected ? ['0x1234567890123456789012345678901234567890'] : [])
+        ),
+        requestAddresses: vi.fn().mockImplementation(() => {
+          isConnected = true;
+          return Promise.resolve(['0x1234567890123456789012345678901234567890']);
+        }),
         switchChain: vi.fn().mockResolvedValue(undefined),
         addChain: vi.fn().mockResolvedValue(undefined),
       });
@@ -428,9 +459,15 @@ describe('ConnectWallet', () => {
       const user = userEvent.setup();
       const { createWalletClient } = await import('viem');
 
+      let isConnected = false;
       (createWalletClient as ReturnType<typeof vi.fn>).mockReturnValue({
-        getAddresses: vi.fn().mockResolvedValue(['0x1234567890123456789012345678901234567890']),
-        requestAddresses: vi.fn().mockResolvedValue(['0x1234567890123456789012345678901234567890']),
+        getAddresses: vi.fn().mockImplementation(() =>
+          Promise.resolve(isConnected ? ['0x1234567890123456789012345678901234567890'] : [])
+        ),
+        requestAddresses: vi.fn().mockImplementation(() => {
+          isConnected = true;
+          return Promise.resolve(['0x1234567890123456789012345678901234567890']);
+        }),
         switchChain: vi.fn().mockResolvedValue(undefined),
         addChain: vi.fn().mockResolvedValue(undefined),
       });
@@ -511,9 +548,15 @@ describe('ConnectWallet', () => {
       const { createWalletClient } = await import('viem');
       const mockSwitchChain = vi.fn().mockResolvedValue(undefined);
 
+      let isConnected = false;
       (createWalletClient as ReturnType<typeof vi.fn>).mockReturnValue({
-        getAddresses: vi.fn().mockResolvedValue(['0x1234567890123456789012345678901234567890']),
-        requestAddresses: vi.fn().mockResolvedValue(['0x1234567890123456789012345678901234567890']),
+        getAddresses: vi.fn().mockImplementation(() =>
+          Promise.resolve(isConnected ? ['0x1234567890123456789012345678901234567890'] : [])
+        ),
+        requestAddresses: vi.fn().mockImplementation(() => {
+          isConnected = true;
+          return Promise.resolve(['0x1234567890123456789012345678901234567890']);
+        }),
         switchChain: mockSwitchChain,
         addChain: vi.fn().mockResolvedValue(undefined),
       });
@@ -533,9 +576,15 @@ describe('ConnectWallet', () => {
       const { createWalletClient } = await import('viem');
       const mockAddChain = vi.fn().mockResolvedValue(undefined);
 
+      let isConnected = false;
       (createWalletClient as ReturnType<typeof vi.fn>).mockReturnValue({
-        getAddresses: vi.fn().mockResolvedValue(['0x1234567890123456789012345678901234567890']),
-        requestAddresses: vi.fn().mockResolvedValue(['0x1234567890123456789012345678901234567890']),
+        getAddresses: vi.fn().mockImplementation(() =>
+          Promise.resolve(isConnected ? ['0x1234567890123456789012345678901234567890'] : [])
+        ),
+        requestAddresses: vi.fn().mockImplementation(() => {
+          isConnected = true;
+          return Promise.resolve(['0x1234567890123456789012345678901234567890']);
+        }),
         switchChain: vi.fn().mockRejectedValue({ code: 4902 }),
         addChain: mockAddChain,
       });
@@ -581,9 +630,15 @@ describe('ConnectWallet', () => {
       const user = userEvent.setup();
       const { createWalletClient } = await import('viem');
 
+      let isConnected = false;
       (createWalletClient as ReturnType<typeof vi.fn>).mockReturnValue({
-        getAddresses: vi.fn().mockResolvedValue(['0x1234567890123456789012345678901234567890']),
-        requestAddresses: vi.fn().mockResolvedValue(['0x1234567890123456789012345678901234567890']),
+        getAddresses: vi.fn().mockImplementation(() =>
+          Promise.resolve(isConnected ? ['0x1234567890123456789012345678901234567890'] : [])
+        ),
+        requestAddresses: vi.fn().mockImplementation(() => {
+          isConnected = true;
+          return Promise.resolve(['0x1234567890123456789012345678901234567890']);
+        }),
         switchChain: vi.fn().mockResolvedValue(undefined),
         addChain: vi.fn().mockResolvedValue(undefined),
       });

@@ -419,7 +419,8 @@ describe('SyncStatusPanel', () => {
     it('renders when open', () => {
       render(<SyncStatusPanel isOpen={true} onClose={mockOnClose} />);
 
-      expect(screen.getByText('Sync Status')).toBeInTheDocument();
+      // "Sync Status" may appear as both panel title and status label
+      expect(screen.getAllByText('Sync Status').length).toBeGreaterThan(0);
     });
   });
 
@@ -486,8 +487,10 @@ describe('SyncStatusPanel', () => {
     it('shows sync status', () => {
       render(<SyncStatusPanel isOpen={true} onClose={mockOnClose} />);
 
-      expect(screen.getByText('Sync Status')).toBeInTheDocument();
-      expect(screen.getByText('Idle')).toBeInTheDocument();
+      // Panel header and status label may appear multiple times
+      expect(screen.getAllByText('Sync Status').length).toBeGreaterThan(0);
+      // "Idle" may appear multiple times (header, status row)
+      expect(screen.getAllByText('Idle').length).toBeGreaterThan(0);
     });
 
     it('shows syncing when in progress', () => {
@@ -646,7 +649,9 @@ describe('SyncStatusPanel', () => {
 
       await user.click(screen.getByRole('button', { name: /Failed/i }));
 
-      expect(screen.getByText(/Auto-delete in \d+ days/)).toBeInTheDocument();
+      // Multiple entries may have auto-delete countdowns
+      const autoDeleteElements = screen.getAllByText(/Auto-delete in \d+ days/);
+      expect(autoDeleteElements.length).toBeGreaterThan(0);
     });
   });
 

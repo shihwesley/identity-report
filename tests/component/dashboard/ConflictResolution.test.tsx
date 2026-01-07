@@ -6,7 +6,7 @@
  */
 
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { render, screen, within } from '@testing-library/react';
+import { render, screen, within, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { ConflictResolution, SyncStatus, TabAuthorityIndicator } from '@/components/dashboard/ConflictResolution';
 import { Conflict, ConflictEntityType, Resolution } from '@/lib/sync/types';
@@ -22,12 +22,42 @@ function createMockConflict(
   id: string = 'conflict-1',
   options: Partial<Conflict> = {}
 ): Conflict {
+  // Create type-appropriate default versions
+  const defaultVersions: Record<ConflictEntityType, { local: unknown; remote: unknown }> = {
+    memory: {
+      local: { content: 'Local content', tags: ['local'], type: 'technical' },
+      remote: { content: 'Remote content', tags: ['remote'], type: 'technical' }
+    },
+    conversation: {
+      local: { title: 'Local convo', messages: [] },
+      remote: { title: 'Remote convo', messages: [] }
+    },
+    insight: {
+      local: { content: 'Local insight', confidence: 0.8 },
+      remote: { content: 'Remote insight', confidence: 0.9 }
+    },
+    preference: {
+      local: { key: 'theme', value: 'dark' },
+      remote: { key: 'theme', value: 'light' }
+    },
+    project: {
+      local: { name: 'Local project' },
+      remote: { name: 'Remote project' }
+    },
+    identity: {
+      local: { displayName: 'Local name' },
+      remote: { displayName: 'Remote name' }
+    }
+  };
+
+  const versions = defaultVersions[type] || { local: {}, remote: {} };
+
   const baseConflict: Conflict = {
     id,
     type,
     entityId: `entity-${id}`,
-    localVersion: {},
-    remoteVersion: {},
+    localVersion: versions.local,
+    remoteVersion: versions.remote,
     autoMergeable: false,
     conflictingFields: ['content'],
     localModifiedAt: Date.now() - 1000,
@@ -332,10 +362,22 @@ describe('ConflictResolution', () => {
       const editButton = screen.getByRole('button', { name: /Edit & Merge/i });
       await user.click(editButton);
 
-      const cancelButton = screen.getAllByRole('button', { name: /Cancel/i })[1]; // Inner cancel button
-      await user.click(cancelButton);
+      // Wait for edit mode to appear
+      expect(screen.getByText('Base version to edit:')).toBeInTheDocument();
 
-      expect(screen.queryByText('Base version to edit:')).not.toBeInTheDocument();
+      // Find all Cancel buttons - the inner one is the last one within the edit area
+      const cancelButtons = screen.getAllByRole('button', { name: /Cancel/i });
+      // The edit mode cancel button should be the one with specific styling (text-zinc-400)
+      const innerCancelButton = cancelButtons.find(btn =>
+        btn.className.includes('text-zinc-400') && btn.className.includes('hover:text-white')
+      ) || cancelButtons[cancelButtons.length - 1];
+
+      await user.click(innerCancelButton);
+
+      // Wait for state to update
+      await waitFor(() => {
+        expect(screen.queryByText('Base version to edit:')).not.toBeInTheDocument();
+      });
     });
 
     it('allows applying custom resolution', async () => {
@@ -352,8 +394,9 @@ describe('ConflictResolution', () => {
       const editButton = screen.getByRole('button', { name: /Edit & Merge/i });
       await user.click(editButton);
 
-      // Modify content
-      const contentTextarea = screen.getByRole('textbox');
+      // Modify content - there are multiple textboxes, get the first one (content textarea)
+      const textboxes = screen.getAllByRole('textbox');
+      const contentTextarea = textboxes[0];
       await user.clear(contentTextarea);
       await user.type(contentTextarea, 'Custom merged content');
 
