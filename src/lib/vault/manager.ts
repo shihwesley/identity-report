@@ -1,8 +1,9 @@
 /**
  * Vault Manager
- * 
+ *
  * High-level manager for the user's Profile Vault.
  * Integrates identity, encryption, and storage systems.
+ * Enhanced with audit log synchronization and JWT key derivation.
  */
 
 import {
@@ -20,20 +21,53 @@ import {
     createWalletIdentity,
     deriveEncryptionKey,
     signAccessGrant,
+    deriveJwtSigningKey,
     WalletIdentity,
-    WalletKeys
+    WalletKeys,
+    JwtKeyPair
 } from './identity';
 import { encryptData, decryptData } from './crypto';
 import { AccessGrant } from '@/lib/types';
 import { storage } from '@/lib/storage/indexeddb';
 import { logger } from '@/lib/logger';
+import { AuditEntry, getAuditLogger, AuditLogger } from '@/lib/mcp/audit';
+import {
+    smartMerge,
+    applyResolutions,
+    Conflict,
+    Resolution,
+    MergeResult,
+    SyncState,
+    SyncStatus,
+    getTabSyncManager,
+    TabSyncManager,
+    ConflictEntityType,
+    getSyncQueue,
+    SyncQueue,
+    SyncQueueStatus,
+    QueuedOperation,
+    EnqueueResult,
+    getPinningManager,
+    PinningManager,
+    ServiceCredentials
+} from '@/lib/sync';
 
 export class VaultManager {
     private keys: WalletKeys | null = null;
+    private jwtKeys: JwtKeyPair | null = null;
     private encryptionKey: CryptoKey | null = null;
     private _state: VaultState;
+    private auditLogger: AuditLogger;
+    private _syncState: SyncState;
+    private tabSyncManager: TabSyncManager | null = null;
+    private baseProfile: PortableProfile | null = null;  // For three-way merge
+    private deviceId: string;
+    private syncQueue: SyncQueue | null = null;
+    private pinningManager: PinningManager | null = null;
+    private pinningCredentials: ServiceCredentials | null = null;
 
     constructor() {
+        this.deviceId = this.getOrCreateDeviceId();
         this._state = {
             status: 'locked',
             did: null,
@@ -46,6 +80,245 @@ export class VaultManager {
                 providers: []
             }
         };
+        this._syncState = {
+            status: 'idle',
+            lastSyncedAt: null,
+            pendingConflicts: [],
+            pendingResolutions: [],
+            deviceId: this.deviceId
+        };
+        this.auditLogger = getAuditLogger();
+    }
+
+    /**
+     * Get or create a persistent device ID.
+     */
+    private getOrCreateDeviceId(): string {
+        if (typeof window === 'undefined') {
+            return `server-${Date.now()}`;
+        }
+        let deviceId = localStorage.getItem('vault-device-id');
+        if (!deviceId) {
+            deviceId = `device-${Date.now()}-${Math.random().toString(36).substring(2, 9)}`;
+            localStorage.setItem('vault-device-id', deviceId);
+        }
+        return deviceId;
+    }
+
+    /**
+     * Get the current sync state.
+     */
+    get syncState(): SyncState {
+        return this._syncState;
+    }
+
+    /**
+     * Check if there are pending conflicts.
+     */
+    get hasPendingConflicts(): boolean {
+        return this._syncState.pendingConflicts.length > 0;
+    }
+
+    /**
+     * Initialize tab sync manager.
+     */
+    initializeTabSync(): void {
+        if (typeof window === 'undefined') return;
+
+        this.tabSyncManager = getTabSyncManager({
+            onConflict: (conflict) => {
+                this._syncState.pendingConflicts.push(conflict);
+                this._syncState.status = 'conflict';
+            },
+            onChange: (change) => {
+                // Apply changes from other tabs
+                this.applyRemoteChange(change);
+            },
+            onAuthorityChange: (hasAuthority) => {
+                logger.info('Tab authority changed', { hasAuthority });
+            }
+        });
+        this.tabSyncManager.initialize();
+    }
+
+    /**
+     * Check if this tab has write authority.
+     */
+    canWrite(): boolean {
+        if (!this.tabSyncManager) return true;
+        return this.tabSyncManager.canWrite();
+    }
+
+    /**
+     * Get the tab sync manager.
+     */
+    getTabSyncManager(): TabSyncManager | null {
+        return this.tabSyncManager;
+    }
+
+    /**
+     * Get the JWT public key for MCP authentication.
+     * Returns null if vault is locked.
+     */
+    getJwtPublicKey(): string | null {
+        return this.jwtKeys?.publicKeyHex ?? null;
+    }
+
+    /**
+     * Get the JWT key pair for token generation.
+     * Returns null if vault is locked.
+     */
+    getJwtKeyPair(): JwtKeyPair | null {
+        return this.jwtKeys;
+    }
+
+    /**
+     * Get the audit logger instance.
+     */
+    getAuditLogger(): AuditLogger {
+        return this.auditLogger;
+    }
+
+    // ============================================================
+    // Offline-First Sync Queue
+    // ============================================================
+
+    /**
+     * Initialize the offline sync queue.
+     * Must be called after vault is unlocked.
+     */
+    initializeSyncQueue(): void {
+        if (typeof window === 'undefined') return;
+
+        this.syncQueue = getSyncQueue();
+        this.pinningManager = getPinningManager();
+
+        // Set up the sync executor
+        this.syncQueue.setSyncExecutor(async (operations) => {
+            await this.executeSyncOperations(operations);
+        });
+
+        logger.info('Sync queue initialized');
+    }
+
+    /**
+     * Configure pinning service credentials.
+     */
+    configurePinningServices(credentials: ServiceCredentials): void {
+        this.pinningCredentials = credentials;
+        if (this.pinningManager) {
+            this.pinningManager.initializeServices(credentials);
+            logger.info('Pinning services configured', {
+                serviceCount: this.pinningManager.getServiceCount()
+            });
+        }
+    }
+
+    /**
+     * Get the current sync queue status.
+     */
+    getSyncQueueStatus(): SyncQueueStatus | null {
+        return this.syncQueue?.getStatus() ?? null;
+    }
+
+    /**
+     * Check if sync queue is blocking new writes.
+     */
+    isSyncBlocked(): boolean {
+        return this.syncQueue?.getStatus().isBlocked ?? false;
+    }
+
+    /**
+     * Force an immediate sync attempt.
+     */
+    async forceSyncQueue(): Promise<void> {
+        if (!this.syncQueue) {
+            throw new Error('Sync queue not initialized');
+        }
+        await this.syncQueue.forceSync();
+    }
+
+    /**
+     * Enqueue a profile change for offline-first sync.
+     * Returns false if queue is blocked.
+     */
+    async enqueueChange(
+        type: 'create' | 'update' | 'delete',
+        entity: 'memory' | 'conversation' | 'profile' | 'preference' | 'project',
+        entityId: string,
+        payload?: unknown
+    ): Promise<EnqueueResult> {
+        if (!this.syncQueue) {
+            // Sync queue not initialized - proceed without queueing
+            return { success: true, blocked: false };
+        }
+
+        return this.syncQueue.enqueue({
+            type,
+            entity,
+            entityId,
+            payload
+        });
+    }
+
+    /**
+     * Execute sync operations (called by sync queue).
+     * Pins to multiple IPFS services and updates registry.
+     */
+    private async executeSyncOperations(_operations: QueuedOperation[]): Promise<void> {
+        if (!this._state.profile || !this._state.did) {
+            throw new Error('Vault is not unlocked');
+        }
+
+        if (!this.pinningManager || this.pinningManager.getServiceCount() === 0) {
+            throw new Error('Pinning services not configured');
+        }
+
+        // Export encrypted vault
+        const { blob } = await this.exportVaultBackup();
+        const data = JSON.parse(await blob.text());
+
+        // Pin to multiple services (requires 2 of 3)
+        const pinResult = await this.pinningManager.pinToAll(data);
+
+        if (!pinResult.success || !pinResult.cid) {
+            const failedServices = pinResult.results
+                .filter(r => !r.success)
+                .map(r => `${r.service}: ${r.error}`)
+                .join(', ');
+            throw new Error(`Pinning failed: ${failedServices}`);
+        }
+
+        // Update registry
+        const { MockRegistryService } = await import('@/lib/services/registry');
+        const registry = new MockRegistryService();
+        await registry.updateProfile(this._state.did, pinResult.cid);
+
+        // Update state
+        this._state.lastSynced = Date.now();
+        this._syncState.lastSyncedAt = Date.now();
+
+        logger.info('Sync completed via queue', {
+            cid: pinResult.cid,
+            services: pinResult.results.filter(r => r.success).map(r => r.service)
+        });
+
+        logger.audit('Vault synced via offline queue', {
+            cid: pinResult.cid,
+            pinResults: pinResult.results.map(r => ({
+                service: r.service,
+                success: r.success,
+                duration: r.durationMs
+            }))
+        });
+    }
+
+    /**
+     * Get pinning service health status.
+     */
+    async getPinningHealthStatus(): Promise<Array<{ service: string; healthy: boolean }> | null> {
+        if (!this.pinningManager) return null;
+        return this.pinningManager.getHealthStatus();
     }
 
     /**
@@ -142,6 +415,7 @@ export class VaultManager {
     /**
      * Unlock the vault with password.
      * Password + mnemonic-derived key = full encryption key.
+     * Also derives JWT signing keys for MCP authentication.
      */
     async unlock(mnemonic: string, password: string): Promise<PortableProfile> {
         if (!validateMnemonic(mnemonic)) {
@@ -155,6 +429,10 @@ export class VaultManager {
             const { identity, keys } = await createWalletIdentity(mnemonic);
             this.keys = keys;
             this._state.did = identity.did;
+
+            // Derive JWT signing keys (separate derivation path)
+            this.jwtKeys = await deriveJwtSigningKey(mnemonic);
+            logger.info('JWT signing keys derived');
 
             // Derive encryption key from private key + password
             this.encryptionKey = await deriveEncryptionKey(keys.privateKey, password);
@@ -224,6 +502,7 @@ export class VaultManager {
 
             // Clear sensitive data from memory
             this.keys = null;
+            this.jwtKeys = null;
             this.encryptionKey = null;
             this._state.profile = null;
             this._state.status = 'locked';
@@ -334,10 +613,17 @@ export class VaultManager {
      * Export complete vault as downloadable .pvault file.
      * This is the main portable backup that can be taken anywhere.
      * The file is already encrypted - safe to store in cloud/email.
+     * Includes audit logs for complete history preservation.
      */
     async exportVaultBackup(): Promise<{ blob: Blob; filename: string }> {
-        const data = await storage.exportAll();
+        const storageData = await storage.exportAll();
 
+        // Parse storage data and add audit logs
+        const exportData = JSON.parse(storageData);
+        exportData.auditLogs = this.auditLogger.getLogsForSync();
+        exportData.auditLogsExportedAt = Date.now();
+
+        const data = JSON.stringify(exportData);
         const blob = new Blob([data], { type: 'application/json' });
         const date = new Date().toISOString().slice(0, 10);
         const filename = `profile-vault-${date}.pvault`;
@@ -364,10 +650,11 @@ export class VaultManager {
     /**
      * Import vault from a .pvault backup file.
      * After import, user still needs to unlock with mnemonic + password.
+     * Also imports audit logs if present.
      */
     async importVaultBackup(file: File): Promise<{
         success: boolean;
-        stats: { conversations: number; memories: number; blobs: number }
+        stats: { conversations: number; memories: number; blobs: number; auditLogs: number }
     }> {
         const data = await file.text();
 
@@ -379,14 +666,27 @@ export class VaultManager {
                 throw new Error('Invalid vault backup file');
             }
 
-            await storage.importAll(data);
+            // Import audit logs if present
+            let auditLogsImported = 0;
+            if (parsed.auditLogs && Array.isArray(parsed.auditLogs)) {
+                auditLogsImported = this.auditLogger.importLogs(parsed.auditLogs);
+                logger.info('Audit logs imported', { count: auditLogsImported });
+            }
+
+            // Remove audit logs from storage import (they're handled separately)
+            const storageData = { ...parsed };
+            delete storageData.auditLogs;
+            delete storageData.auditLogsExportedAt;
+
+            await storage.importAll(JSON.stringify(storageData));
 
             return {
                 success: true,
                 stats: {
                     conversations: parsed.conversations?.length || 0,
                     memories: parsed.memories?.length || 0,
-                    blobs: parsed.blobs?.length || 0
+                    blobs: parsed.blobs?.length || 0,
+                    auditLogs: auditLogsImported
                 }
             };
         } catch (e) {
@@ -398,7 +698,7 @@ export class VaultManager {
 
     /**
      * Sync the current vault to Decentralized Storage.
-     * 1. Export encrypted vault
+     * 1. Export encrypted vault (includes audit logs)
      * 2. Upload to IPFS (Pinata)
      * 3. Update DID Registry (Blockchain)
      */
@@ -413,7 +713,7 @@ export class VaultManager {
         const ipfs = new PinataService({ jwt: config.pinataJwt });
         const registry = new MockRegistryService(); // Using Mock for now
 
-        // 1. Get Encrypted Blob
+        // 1. Get Encrypted Blob (includes audit logs)
         const { blob, filename } = await this.exportVaultBackup();
 
         // 2. Upload to IPFS
@@ -427,7 +727,269 @@ export class VaultManager {
         logger.info('Registry update complete', { txHash });
         logger.audit('Vault synced to cloud', { cid, txHash });
 
+        this._state.lastSynced = Date.now();
+
         return { cid, txHash };
+    }
+
+    /**
+     * Get audit logs for sync (encrypted with vault).
+     */
+    getAuditLogsForSync(): AuditEntry[] {
+        return this.auditLogger.getLogsForSync();
+    }
+
+    /**
+     * Import audit logs from sync.
+     */
+    importAuditLogs(logs: AuditEntry[]): number {
+        return this.auditLogger.importLogs(logs);
+    }
+
+    // ============================================================
+    // Smart Merge & Conflict Resolution
+    // ============================================================
+
+    /**
+     * Sync with remote profile using smart merge.
+     * Returns conflicts that need user resolution, or empty array if auto-merged.
+     */
+    async syncWithRemote(remoteProfile: PortableProfile): Promise<MergeResult> {
+        if (!this._state.profile) {
+            throw new Error('Vault is not unlocked');
+        }
+
+        this._syncState.status = 'syncing';
+
+        try {
+            // Perform smart merge
+            const result = await smartMerge(
+                this._state.profile,
+                remoteProfile,
+                this.baseProfile || undefined
+            );
+
+            if (result.conflicts.length > 0) {
+                // Store conflicts for resolution
+                this._syncState.pendingConflicts = result.conflicts;
+                this._syncState.status = 'conflict';
+                logger.info('Sync conflicts detected', {
+                    count: result.conflicts.length,
+                    autoMerged: result.autoResolved
+                });
+            } else {
+                // Apply merged profile
+                this._state.profile = result.merged;
+                this.baseProfile = structuredClone(result.merged);
+                this._syncState.status = 'idle';
+                this._syncState.lastSyncedAt = Date.now();
+                this._state.lastSynced = Date.now();
+                this.updateStats();
+                logger.info('Sync completed without conflicts', {
+                    autoMerged: result.autoResolved
+                });
+            }
+
+            logger.audit('Profile sync completed', {
+                conflicts: result.conflicts.length,
+                autoMerged: result.autoResolved,
+                stats: result.stats
+            });
+
+            return result;
+        } catch (error) {
+            this._syncState.status = 'error';
+            this._syncState.error = (error as Error).message;
+            throw error;
+        }
+    }
+
+    /**
+     * Resolve pending conflicts with user-provided resolutions.
+     */
+    async resolveConflicts(resolutions: Resolution[]): Promise<void> {
+        if (!this._state.profile) {
+            throw new Error('Vault is not unlocked');
+        }
+
+        if (this._syncState.pendingConflicts.length === 0) {
+            throw new Error('No pending conflicts to resolve');
+        }
+
+        // Build resolution map
+        const resolutionMap = new Map<string, { choice: 'local' | 'remote' | 'custom'; customValue?: unknown }>();
+        for (const r of resolutions) {
+            resolutionMap.set(r.conflictId, {
+                choice: r.choice,
+                customValue: r.customValue
+            });
+        }
+
+        // Apply resolutions
+        this._state.profile = applyResolutions(
+            this._state.profile,
+            this._syncState.pendingConflicts,
+            resolutionMap
+        );
+
+        // Clear conflicts and update state
+        this._syncState.pendingConflicts = [];
+        this._syncState.pendingResolutions = resolutions;
+        this._syncState.status = 'idle';
+        this._syncState.lastSyncedAt = Date.now();
+        this._state.lastSynced = Date.now();
+
+        // Update base profile for future merges
+        this.baseProfile = structuredClone(this._state.profile);
+
+        this.updateStats();
+
+        logger.info('Conflicts resolved', { count: resolutions.length });
+        logger.audit('Conflicts resolved', {
+            resolutions: resolutions.map(r => ({
+                conflictId: r.conflictId,
+                choice: r.choice
+            }))
+        });
+    }
+
+    /**
+     * Get pending conflicts.
+     */
+    getPendingConflicts(): Conflict[] {
+        return this._syncState.pendingConflicts;
+    }
+
+    /**
+     * Clear pending conflicts without resolution (discard remote changes).
+     */
+    discardConflicts(): void {
+        this._syncState.pendingConflicts = [];
+        this._syncState.status = 'idle';
+        logger.info('Conflicts discarded');
+    }
+
+    /**
+     * Apply a change from another tab or remote source.
+     */
+    private applyRemoteChange(change: {
+        entityType: ConflictEntityType;
+        entityId: string;
+        operation: 'create' | 'update' | 'delete';
+        data: unknown;
+    }): void {
+        if (!this._state.profile) return;
+
+        switch (change.entityType) {
+            case 'memory':
+                this.applyMemoryChange(change);
+                break;
+            case 'conversation':
+                this.applyConversationChange(change);
+                break;
+            case 'insight':
+                this.applyInsightChange(change);
+                break;
+            // Add other entity types as needed
+        }
+
+        this.updateStats();
+    }
+
+    private applyMemoryChange(change: {
+        entityId: string;
+        operation: 'create' | 'update' | 'delete';
+        data: unknown;
+    }): void {
+        if (!this._state.profile) return;
+
+        const memory = change.data as MemoryFragment;
+        const allMemories = [...this._state.profile.shortTermMemory, ...this._state.profile.longTermMemory];
+
+        switch (change.operation) {
+            case 'create':
+                this._state.profile.shortTermMemory.push(memory);
+                break;
+            case 'update':
+                const idx = allMemories.findIndex(m => m.id === change.entityId);
+                if (idx >= 0) {
+                    if (idx < this._state.profile.shortTermMemory.length) {
+                        this._state.profile.shortTermMemory[idx] = memory;
+                    } else {
+                        const longIdx = idx - this._state.profile.shortTermMemory.length;
+                        this._state.profile.longTermMemory[longIdx] = memory;
+                    }
+                }
+                break;
+            case 'delete':
+                this._state.profile.shortTermMemory = this._state.profile.shortTermMemory.filter(m => m.id !== change.entityId);
+                this._state.profile.longTermMemory = this._state.profile.longTermMemory.filter(m => m.id !== change.entityId);
+                break;
+        }
+    }
+
+    private applyConversationChange(change: {
+        entityId: string;
+        operation: 'create' | 'update' | 'delete';
+        data: unknown;
+    }): void {
+        if (!this._state.profile) return;
+
+        const conversation = change.data as Conversation;
+
+        switch (change.operation) {
+            case 'create':
+                this._state.profile.conversations.push(conversation);
+                break;
+            case 'update':
+                const idx = this._state.profile.conversations.findIndex(c => c.id === change.entityId);
+                if (idx >= 0) {
+                    this._state.profile.conversations[idx] = conversation;
+                }
+                break;
+            case 'delete':
+                this._state.profile.conversations = this._state.profile.conversations.filter(c => c.id !== change.entityId);
+                break;
+        }
+    }
+
+    private applyInsightChange(change: {
+        entityId: string;
+        operation: 'create' | 'update' | 'delete';
+        data: unknown;
+    }): void {
+        if (!this._state.profile) return;
+
+        const insight = change.data as UserInsight;
+
+        switch (change.operation) {
+            case 'create':
+                this._state.profile.insights.push(insight);
+                break;
+            case 'update':
+                const idx = this._state.profile.insights.findIndex(i => i.id === change.entityId);
+                if (idx >= 0) {
+                    this._state.profile.insights[idx] = insight;
+                }
+                break;
+            case 'delete':
+                this._state.profile.insights = this._state.profile.insights.filter(i => i.id !== change.entityId);
+                break;
+        }
+    }
+
+    /**
+     * Broadcast a local change to other tabs.
+     */
+    broadcastChange(
+        entityType: ConflictEntityType,
+        entityId: string,
+        operation: 'create' | 'update' | 'delete',
+        data: unknown
+    ): void {
+        if (this.tabSyncManager) {
+            this.tabSyncManager.broadcastChange(entityType, entityId, operation, data);
+        }
     }
 
     /**

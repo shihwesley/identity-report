@@ -1,7 +1,8 @@
 /**
  * Profile Context Protocol (PCP) MCP Server
- * 
+ *
  * The main server module that orchestrates profile data (vault) and transport layers.
+ * Enhanced with JWT authentication and audit logging.
  */
 
 import { ProfileVault } from './vault';
@@ -15,26 +16,76 @@ import {
     CallToolRequest,
     ListPromptsRequest
 } from './types';
-import { McpTransport, createTransport } from './transports';
+import { McpTransport, createTransport, SseTransport } from './transports';
 import { TRANSPORT_MODE, SSE_PORT, VAULT_PATH, log, logError, logAudit } from './config';
+import { McpAuthMiddleware, createAuthMiddleware } from './auth';
+import { getAuditLogger, AuditLogger } from './audit';
 
 export class ProfileMcpServer {
     private vault: ProfileVault;
     private transport: McpTransport;
+    private authMiddleware: McpAuthMiddleware | null = null;
+    private auditLogger: AuditLogger;
+    private transportMode: 'stdio' | 'sse';
 
-    constructor(vault: ProfileVault, transport: McpTransport) {
+    constructor(vault: ProfileVault, transport: McpTransport, transportMode: 'stdio' | 'sse' = 'stdio') {
         this.vault = vault;
         this.transport = transport;
+        this.transportMode = transportMode;
+        this.auditLogger = getAuditLogger();
 
-        log('Server logic initialized');
+        // Create auth middleware (STDIO is trusted, SSE requires auth)
+        this.authMiddleware = createAuthMiddleware({
+            transport: transportMode,
+            auditLogger: this.auditLogger
+        });
+
+        // Attach auth middleware to SSE transport
+        if (transportMode === 'sse' && transport.setAuthMiddleware) {
+            transport.setAuthMiddleware(this.authMiddleware);
+        }
+
+        log('Server logic initialized', { transport: transportMode, authEnabled: !!this.authMiddleware });
+    }
+
+    /**
+     * Set the JWT public key for authentication.
+     * Called when vault is unlocked.
+     */
+    setJwtPublicKey(publicKey: Uint8Array | string): void {
+        if (this.authMiddleware) {
+            this.authMiddleware.setJwtPublicKey(publicKey);
+            log('JWT public key configured for MCP auth');
+        }
+    }
+
+    /**
+     * Get the auth middleware instance.
+     */
+    getAuthMiddleware(): McpAuthMiddleware | null {
+        return this.authMiddleware;
+    }
+
+    /**
+     * Get the audit logger instance.
+     */
+    getAuditLogger(): AuditLogger {
+        return this.auditLogger;
     }
 
     async start() {
-        await this.transport.start((req) => this.handleRequest(req));
+        await this.transport.start((req, sessionId) => this.handleRequest(req, sessionId));
+
+        // Start session cleanup interval (clean sessions older than 1 hour)
+        if (this.authMiddleware) {
+            setInterval(() => {
+                this.authMiddleware?.cleanupExpiredSessions(3600000);
+            }, 300000); // Check every 5 minutes
+        }
     }
 
-    private async handleRequest(req: McpRequest) {
-        log('Received MCP Request', { method: req.method, id: req.id });
+    private async handleRequest(req: McpRequest, sessionId?: string) {
+        log('Received MCP Request', { method: req.method, id: req.id, sessionId });
 
         try {
             switch (req.method) {
@@ -45,11 +96,11 @@ export class ProfileMcpServer {
                 case 'resources/list':
                     return this.handleResourcesList(req as ListResourcesRequest);
                 case 'resources/read':
-                    return this.handleResourcesRead(req as ReadResourceRequest);
+                    return this.handleResourcesRead(req as ReadResourceRequest, sessionId);
                 case 'tools/list':
                     return this.handleToolsList(req as ListToolsRequest);
                 case 'tools/call':
-                    return this.handleToolsCall(req as CallToolRequest);
+                    return this.handleToolsCall(req as CallToolRequest, sessionId);
                 case 'prompts/list':
                     return this.handlePromptsList(req as ListPromptsRequest);
                 default:
@@ -59,6 +110,34 @@ export class ProfileMcpServer {
         } catch (error) {
             await this.sendError(req.id, -32603, (error as Error).message);
         }
+    }
+
+    /**
+     * Get or create an auth session ID for authorization.
+     * For STDIO, creates a local session. For SSE, uses the provided session.
+     */
+    private getAuthSessionId(sseSessionId?: string): string {
+        if (this.transportMode === 'stdio') {
+            // For STDIO, create a local session if we don't have one
+            const sessions = this.authMiddleware?.getActiveSessions() || [];
+            const localSession = sessions.find(s => s.did === 'local');
+            if (localSession) {
+                return localSession.sessionId;
+            }
+            // Create new local session via authenticate
+            // This is synchronous for STDIO since it's always trusted
+            return 'local-session';
+        }
+
+        // For SSE, we need to map the SSE session ID to the auth session ID
+        if (sseSessionId && this.transport instanceof SseTransport) {
+            const authSession = (this.transport as SseTransport).getAuthSession(sseSessionId);
+            if (authSession) {
+                return authSession.sessionId;
+            }
+        }
+
+        return sseSessionId || 'unknown';
     }
 
     // --- Protocol Handlers ---
@@ -131,11 +210,22 @@ export class ProfileMcpServer {
         await this.sendResponse(req.id, { resources });
     }
 
-    private async handleResourcesRead(req: ReadResourceRequest) {
+    private async handleResourcesRead(req: ReadResourceRequest, sseSessionId?: string) {
         const { uri } = req.params || {};
 
         if (!uri) {
             return this.sendError(req.id, -32602, 'Missing uri parameter');
+        }
+
+        // Authorization check (for SSE transport)
+        if (this.authMiddleware && this.transportMode === 'sse') {
+            const authSessionId = this.getAuthSessionId(sseSessionId);
+            const authResult = await this.authMiddleware.authorizeResourceRead(authSessionId, uri);
+
+            if (!authResult.authorized) {
+                logError('Resource read denied', { uri, reason: authResult.reason });
+                return this.sendError(req.id, -32600, authResult.reason || 'Authorization denied');
+            }
         }
 
         const content = await this.vault.readResource(uri);
@@ -266,11 +356,26 @@ export class ProfileMcpServer {
         await this.sendResponse(req.id, { tools });
     }
 
-    private async handleToolsCall(req: CallToolRequest) {
+    private async handleToolsCall(req: CallToolRequest, sseSessionId?: string) {
         const { name, arguments: args } = req.params || {};
 
         if (!name) {
             return this.sendError(req.id, -32602, 'Missing tool name');
+        }
+
+        // Authorization check (for SSE transport)
+        if (this.authMiddleware && this.transportMode === 'sse') {
+            const authSessionId = this.getAuthSessionId(sseSessionId);
+            const authResult = await this.authMiddleware.authorizeToolCall(
+                authSessionId,
+                name,
+                args as Record<string, unknown>
+            );
+
+            if (!authResult.authorized) {
+                logError('Tool call denied', { name, reason: authResult.reason });
+                return this.sendError(req.id, -32600, authResult.reason || 'Authorization denied');
+            }
         }
 
         log('Executing tool', { name, args });
@@ -321,11 +426,13 @@ export class ProfileMcpServer {
 
 if (require.main === module) {
     const vault = new ProfileVault();
-    const transport = createTransport(TRANSPORT_MODE as any, SSE_PORT);
-    const server = new ProfileMcpServer(vault, transport);
+    const transportMode = TRANSPORT_MODE as 'stdio' | 'sse';
+    const transport = createTransport(transportMode, SSE_PORT);
+    const server = new ProfileMcpServer(vault, transport, transportMode);
 
     log(`Profile Context Protocol MCP Server running in ${TRANSPORT_MODE} mode...`);
     log('Vault path:', VAULT_PATH);
+    log('Authentication:', transportMode === 'stdio' ? 'trusted (local)' : 'JWT required');
 
     server.start().catch((err) => {
         log('Server error:', err);

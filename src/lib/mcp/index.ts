@@ -1,6 +1,6 @@
 /**
  * Profile Context Protocol (PCP) MCP Module
- * 
+ *
  * Public API for the MCP server components.
  */
 
@@ -9,3 +9,5 @@ export * from './config';
 export * from './vault';
 export * from './transports';
 export * from './server';
+export * from './auth';
+export * from './audit';

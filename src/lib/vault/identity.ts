@@ -243,3 +243,174 @@ export async function signAccessGrant(
         signature
     };
 }
+
+// ============================================================
+// JWT Key Derivation (Separate Path for MCP Authentication)
+// ============================================================
+
+/**
+ * Derivation path constants for key isolation.
+ * Using separate paths limits blast radius if one key is compromised.
+ */
+export const KEY_DERIVATION_PATHS = {
+    ENCRYPTION: 0,  // m/44'/identity'/0' - Main encryption key
+    JWT_SIGNING: 1, // m/44'/identity'/1' - JWT signing key
+    RECOVERY: 2,    // m/44'/identity'/2' - Recovery key (future)
+} as const;
+
+export interface JwtKeyPair {
+    privateKey: Uint8Array;
+    publicKey: Uint8Array;
+    publicKeyHex: string;
+}
+
+/**
+ * Derive a separate key pair for JWT signing from a mnemonic.
+ * Uses a different derivation path than the main encryption key for isolation.
+ */
+export async function deriveJwtSigningKey(mnemonic: string): Promise<JwtKeyPair> {
+    if (!validateMnemonic(mnemonic)) {
+        throw new Error('Invalid mnemonic phrase');
+    }
+
+    // Convert mnemonic to seed
+    const seed = await bip39.mnemonicToSeed(mnemonic);
+    const seedBytes = new Uint8Array(seed);
+
+    // Create path-specific derivation by hashing seed + path identifier
+    // This ensures JWT key is cryptographically isolated from encryption key
+    const pathMarker = new Uint8Array([
+        0x4A, 0x57, 0x54, // "JWT" in ASCII
+        KEY_DERIVATION_PATHS.JWT_SIGNING
+    ]);
+
+    const combinedForJwt = new Uint8Array([...seedBytes, ...pathMarker]);
+    const jwtSeed = await sha256(combinedForJwt);
+
+    // Derive Ed25519 key pair from JWT-specific seed
+    const privateKey = jwtSeed.slice(0, 32);
+    const publicKey = await ed.getPublicKeyAsync(privateKey);
+
+    return {
+        privateKey,
+        publicKey,
+        publicKeyHex: bytesToHex(publicKey)
+    };
+}
+
+/**
+ * JWT Token structure for MCP authentication.
+ */
+export interface JwtPayload {
+    sub: string;        // DID (subject)
+    iat: number;        // Issued at (Unix timestamp)
+    exp: number;        // Expiry (Unix timestamp)
+    jti: string;        // Unique token ID
+    client: string;     // Client identifier (e.g., "claude-desktop")
+    scope: string[];    // Allowed operation scopes
+}
+
+export interface JwtHeader {
+    alg: 'EdDSA';
+    typ: 'JWT';
+}
+
+/**
+ * Create a signed JWT token for MCP authentication.
+ */
+export async function createJwt(
+    payload: Omit<JwtPayload, 'iat' | 'jti'>,
+    privateKey: Uint8Array
+): Promise<string> {
+    const header: JwtHeader = {
+        alg: 'EdDSA',
+        typ: 'JWT'
+    };
+
+    const fullPayload: JwtPayload = {
+        ...payload,
+        iat: Math.floor(Date.now() / 1000),
+        jti: crypto.randomUUID()
+    };
+
+    // Base64URL encode header and payload
+    const headerB64 = base64UrlEncode(JSON.stringify(header));
+    const payloadB64 = base64UrlEncode(JSON.stringify(fullPayload));
+
+    // Create signature
+    const signingInput = `${headerB64}.${payloadB64}`;
+    const signature = await ed.signAsync(
+        new TextEncoder().encode(signingInput),
+        privateKey
+    );
+    const signatureB64 = base64UrlEncode(String.fromCharCode(...signature));
+
+    return `${headerB64}.${payloadB64}.${signatureB64}`;
+}
+
+/**
+ * Verify and decode a JWT token.
+ */
+export async function verifyJwt(
+    token: string,
+    publicKey: Uint8Array | string
+): Promise<JwtPayload> {
+    const parts = token.split('.');
+    if (parts.length !== 3) {
+        throw new Error('Invalid JWT format');
+    }
+
+    const [headerB64, payloadB64, signatureB64] = parts;
+
+    // Decode header
+    const header = JSON.parse(base64UrlDecode(headerB64)) as JwtHeader;
+    if (header.alg !== 'EdDSA') {
+        throw new Error('Unsupported algorithm');
+    }
+
+    // Verify signature
+    const signingInput = `${headerB64}.${payloadB64}`;
+    const signature = Uint8Array.from(
+        base64UrlDecode(signatureB64).split('').map(c => c.charCodeAt(0))
+    );
+
+    const pubKeyBytes = typeof publicKey === 'string'
+        ? hexToBytes(publicKey)
+        : publicKey;
+
+    const isValid = await ed.verifyAsync(
+        signature,
+        new TextEncoder().encode(signingInput),
+        pubKeyBytes
+    );
+
+    if (!isValid) {
+        throw new Error('Invalid JWT signature');
+    }
+
+    // Decode and validate payload
+    const payload = JSON.parse(base64UrlDecode(payloadB64)) as JwtPayload;
+
+    // Check expiry
+    const now = Math.floor(Date.now() / 1000);
+    if (payload.exp < now) {
+        throw new Error('JWT has expired');
+    }
+
+    return payload;
+}
+
+// Base64URL encoding helpers (RFC 4648)
+function base64UrlEncode(str: string): string {
+    const base64 = Buffer.from(str).toString('base64');
+    return base64.replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+}
+
+function base64UrlDecode(str: string): string {
+    let base64 = str.replace(/-/g, '+').replace(/_/g, '/');
+    // Add padding if needed
+    while (base64.length % 4) {
+        base64 += '=';
+    }
+    return Buffer.from(base64, 'base64').toString('utf-8');
+}
