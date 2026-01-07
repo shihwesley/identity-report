@@ -1,5 +1,13 @@
 import { PortableProfile } from './types';
-import realProfile from './realProfile.json';
+
+// Try to load real profile, fallback to null profile if not found
+let realProfile: unknown = null;
+try {
+    // This file is gitignored and contains user-specific data
+    realProfile = require('./realProfile.json');
+} catch {
+    // File doesn't exist in CI or fresh installs
+}
 
 const NULL_PROFILE: PortableProfile = {
     identity: {
