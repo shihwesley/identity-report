@@ -5,7 +5,8 @@
  * Run with: npx hardhat run scripts/upgrade-registry.ts --network <network>
  */
 
-import { ethers, upgrades } from "hardhat";
+import hre from "hardhat";
+const { ethers, upgrades } = hre;
 
 async function main() {
     const [deployer] = await ethers.getSigners();

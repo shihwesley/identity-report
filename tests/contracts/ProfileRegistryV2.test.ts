@@ -1,8 +1,10 @@
 import { expect } from "chai"
-import { ethers, upgrades } from "hardhat"
+import hre from "hardhat"
 import { ProfileRegistryV2 } from "../../typechain-types"
 import { SignerWithAddress } from "@nomicfoundation/hardhat-ethers/signers"
 import { time } from "@nomicfoundation/hardhat-network-helpers"
+
+const { ethers, upgrades } = hre
 
 /**
  * ProfileRegistryV2 Contract Tests
