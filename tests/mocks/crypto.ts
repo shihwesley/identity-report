@@ -64,7 +64,7 @@ export function createDeterministicRandom(seed: number = 12345) {
 
 // Helper for generating test keys
 export async function generateTestKeyPair() {
-  const { ed25519 } = await import('@noble/ed25519')
+  const ed = await import('@noble/ed25519')
 
   // Use deterministic seed for testing
   const seed = new Uint8Array(32)
@@ -73,7 +73,7 @@ export async function generateTestKeyPair() {
   }
 
   const privateKey = seed
-  const publicKey = await ed25519.getPublicKey(privateKey)
+  const publicKey = await ed.getPublicKeyAsync(privateKey)
 
   return { privateKey, publicKey }
 }
