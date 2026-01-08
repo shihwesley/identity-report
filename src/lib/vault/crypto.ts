@@ -148,7 +148,7 @@ export async function encryptBlob(
             iv: iv as BufferSource,
         },
         key,
-        dataArray
+        dataArray as BufferSource
     );
 
     return {
