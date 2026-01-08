@@ -30,6 +30,8 @@ const eslintConfig = defineConfig([
       "@typescript-eslint/ban-ts-comment": "warn",
       // React 19 compiler rules - downgrade to warnings for now
       "react-hooks/set-state-in-effect": "warn",
+      // Allow require() for dynamic imports (e.g., optional config files)
+      "@typescript-eslint/no-require-imports": "warn",
     },
   },
 ]);
