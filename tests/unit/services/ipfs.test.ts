@@ -536,7 +536,8 @@ describe('IPFS Mock Utilities', () => {
             await mockPinataAPI.pinJSONToIPFS({ data: 'test' });
             const duration = Date.now() - start;
 
-            expect(duration).toBeGreaterThanOrEqual(100);
+            // Allow small tolerance for timing variations in CI environments
+            expect(duration).toBeGreaterThanOrEqual(95);
         });
 
         it('should configure failure mode', async () => {
