@@ -8,6 +8,7 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
+import { axe } from 'vitest-axe';
 import { RecoverySetup, RecoveryStatus } from '@/components/dashboard/RecoverySetup';
 import { RECOVERY_SCENARIOS } from '../../fixtures/test-vectors';
 
@@ -92,6 +93,18 @@ describe('RecoverySetup', () => {
 
       expect(screen.getByText('Protect Your Account')).toBeInTheDocument();
       expect(screen.getByText(/Set up recovery guardians/)).toBeInTheDocument();
+    });
+
+    it('should have no accessibility violations', async () => {
+      const { container } = render(
+        <RecoverySetup
+          encryptionKey={mockEncryptionKey}
+          onConfigured={mockOnConfigured}
+          onClose={mockOnClose}
+        />
+      );
+      const results = await axe(container);
+      expect(results).toHaveNoViolations();
     });
 
     it('displays how it works instructions', () => {
@@ -596,6 +609,12 @@ describe('RecoveryStatus', () => {
       expect(screen.getByText('Account Recovery')).toBeInTheDocument();
       expect(screen.getByText('Not configured')).toBeInTheDocument();
       expect(screen.getByRole('button', { name: /Set Up/i })).toBeInTheDocument();
+    });
+
+    it('should have no accessibility violations', async () => {
+      const { container } = render(<RecoveryStatus onSetup={mockOnSetup} />);
+      const results = await axe(container);
+      expect(results).toHaveNoViolations();
     });
 
     it('calls onSetup when Set Up button is clicked', async () => {

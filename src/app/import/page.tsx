@@ -10,6 +10,24 @@ import {
     isOpenAIExportFolder
 } from '@/lib/importers';
 import { AIProvider, MessageContentType } from '@/lib/types';
+import {
+    CloudIcon,
+    ShieldCheck,
+    Zap,
+    Folder,
+    FileText,
+    CheckCircle2,
+    AlertCircle,
+    ArrowRight,
+    Search,
+    BarChart3,
+    Clock,
+    FileJson,
+    MessageSquare,
+    Link as LinkIcon,
+    Brain,
+    History as HistoryIcon
+} from 'lucide-react';
 
 type ImportStatus = 'idle' | 'detecting' | 'parsing' | 'importing' | 'complete' | 'error';
 
@@ -182,34 +200,53 @@ export default function ImportPage() {
     const availableImporters = getAvailableImporters();
 
     return (
-        <div className="max-w-4xl mx-auto">
-            <h1 className="text-2xl font-bold text-white mb-2">Import Conversations</h1>
-            <p className="text-zinc-400 mb-8">
-                Migrate your chat history from OpenAI, Claude, or Gemini into your encrypted Profile Vault.
-            </p>
+        <div className="max-w-5xl mx-auto space-y-8 animate-in">
+            <div className="flex flex-col md:flex-row md:items-end justify-between gap-4">
+                <div>
+                    <h1 className="text-3xl font-black text-stone-900 tracking-tight">Sync & Import</h1>
+                    <p className="text-stone-500 font-medium">Migrate knowledge from major AI providers to your encrypted vault.</p>
+                </div>
+                <div className="px-4 py-2 rounded-2xl bg-primary/10 border border-primary/20 text-primary flex items-center gap-2">
+                    <CloudIcon size={16} />
+                    <span className="text-xs font-bold uppercase tracking-widest">Multi-Provider Bridge</span>
+                </div>
+            </div>
 
             {/* Provider Selection */}
-            <div className="grid grid-cols-3 gap-4 mb-8">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                 {availableImporters.map((imp) => {
                     const info = providerInfo[imp.id as AIProvider];
+                    const isSelected = selectedProvider === imp.id;
                     return (
                         <div
                             key={imp.id}
-                            className={`p-4 rounded-xl border cursor-pointer transition-all ${selectedProvider === imp.id
-                                ? 'border-violet-500 bg-violet-500/10'
-                                : 'border-zinc-800 bg-zinc-900/50 hover:border-zinc-700'
+                            className={`p-6 rounded-[2rem] border transition-all cursor-pointer relative overflow-hidden group ${isSelected
+                                ? 'bg-stone-900 border-stone-800 shadow-xl shadow-stone-900/10'
+                                : 'bg-white border-white/60 hover:bg-stone-50'
                                 }`}
                             onClick={() => setSelectedProvider(imp.id as AIProvider)}
                         >
-                            <div className="flex items-center gap-3 mb-2">
-                                <span className="text-2xl">{info.icon}</span>
-                                <span className="font-medium text-white">{info.name}</span>
+                            <div className="flex items-center justify-between mb-4 relative z-10">
+                                <div className={`w-12 h-12 rounded-2xl flex items-center justify-center text-2xl border transition-all ${isSelected ? 'bg-white/10 border-white/10 shadow-inner' : 'bg-stone-50 border-stone-100'
+                                    }`}>
+                                    {info.icon}
+                                </div>
+                                {isSelected && <CheckCircle2 size={16} className="text-primary" />}
                             </div>
-                            <p className="text-xs text-zinc-500">{imp.description}</p>
+                            <div className="relative z-10">
+                                <h3 className={`text-sm font-black tracking-tight ${isSelected ? 'text-white' : 'text-stone-900'}`}>{info.name}</h3>
+                                <p className={`text-[10px] font-medium leading-relaxed mt-1 ${isSelected ? 'text-stone-400' : 'text-stone-500'}`}>
+                                    {imp.description}
+                                </p>
+                            </div>
                             {imp.supportsFolder && (
-                                <span className="inline-block mt-2 text-[10px] px-2 py-0.5 bg-violet-500/20 text-violet-300 rounded-full">
-                                    📁 Folder Import
-                                </span>
+                                <div className={`mt-4 inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-[10px] font-black uppercase tracking-wider relative z-10 ${isSelected ? 'bg-primary/20 text-primary' : 'bg-stone-100 text-stone-400'
+                                    }`}>
+                                    <Folder size={10} /> Folder Ready
+                                </div>
+                            )}
+                            {isSelected && (
+                                <div className="absolute top-0 right-0 w-24 h-24 bg-primary/10 blur-2xl -mr-12 -mt-12"></div>
                             )}
                         </div>
                     );
@@ -218,110 +255,71 @@ export default function ImportPage() {
 
             {/* Success State */}
             {status === 'complete' && stats && (
-                <div className="glass-card p-8 rounded-xl border border-teal-500/50 bg-teal-500/5">
-                    <div className="flex items-start gap-6">
-                        <div className="w-16 h-16 bg-teal-500/20 rounded-full flex items-center justify-center shrink-0">
-                            <svg className="w-8 h-8 text-teal-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                            </svg>
-                        </div>
-                        <div className="flex-1">
-                            <h2 className="text-xl font-bold text-white mb-2">Import Successful</h2>
-                            <p className="text-zinc-300 mb-4">
-                                Successfully imported from <strong className="text-teal-300">{stats.provider}</strong>
-                                {stats.hasUserProfile && <span className="text-violet-300 ml-2">• Profile linked</span>}
-                            </p>
+                <div className="glass-panel p-10 rounded-[2.5rem] bg-emerald-50/50 border-emerald-500/20 relative overflow-hidden">
+                    <div className="absolute top-0 right-0 w-64 h-64 bg-emerald-500/5 blur-[100px] -mr-32 -mt-32"></div>
 
-                            {/* Primary Stats */}
-                            <div className="grid grid-cols-4 gap-4 mb-4">
-                                <div className="bg-zinc-950 rounded-lg p-3">
-                                    <p className="text-2xl font-bold text-white">{stats.conversations}</p>
-                                    <p className="text-xs text-zinc-500">Conversations</p>
+                    <div className="flex flex-col md:flex-row gap-8 relative z-10">
+                        <div className="w-20 h-20 bg-emerald-500/20 rounded-3xl flex items-center justify-center text-emerald-600 border border-emerald-500/30 shadow-lg shadow-emerald-500/10 shrink-0">
+                            <CheckCircle2 size={32} strokeWidth={2.5} />
+                        </div>
+                        <div className="flex-1 space-y-8">
+                            <div>
+                                <h2 className="text-3xl font-black text-stone-900 tracking-tighter">Import Complete</h2>
+                                <p className="text-stone-500 font-medium">
+                                    Knowledge bridge established with <strong className="text-stone-900">{stats.provider}</strong>.
+                                    {stats.hasUserProfile && <span className="text-primary ml-2 font-black uppercase text-[10px] border border-primary/20 px-2 py-0.5 rounded-lg">Identity Linked</span>}
+                                </p>
+                            </div>
+
+                            {/* Metrics Grid */}
+                            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                                <div className="bg-white p-5 rounded-[1.8rem] border border-stone-100 shadow-sm group hover:scale-105 transition-all">
+                                    <MessageSquare size={16} className="text-stone-200 mb-2 group-hover:text-primary" />
+                                    <p className="text-2xl font-black text-stone-900 tracking-tight">{stats.conversations}</p>
+                                    <p className="text-[10px] font-black text-stone-400 uppercase tracking-widest">Threads</p>
                                 </div>
-                                <div className="bg-zinc-950 rounded-lg p-3">
-                                    <p className="text-2xl font-bold text-white">{stats.messages.toLocaleString()}</p>
-                                    <p className="text-xs text-zinc-500">Messages</p>
+                                <div className="bg-white p-5 rounded-[1.8rem] border border-stone-100 shadow-sm group hover:scale-105 transition-all">
+                                    <Zap size={16} className="text-stone-200 mb-2 group-hover:text-amber-500" />
+                                    <p className="text-2xl font-black text-stone-900 tracking-tight">{stats.messages.toLocaleString()}</p>
+                                    <p className="text-[10px] font-black text-stone-400 uppercase tracking-widest">Messages</p>
                                 </div>
-                                <div className="bg-zinc-950 rounded-lg p-3">
-                                    <p className="text-2xl font-bold text-white">{stats.memories}</p>
-                                    <p className="text-xs text-zinc-500">Memories Created</p>
+                                <div className="bg-white p-5 rounded-[1.8rem] border border-stone-100 shadow-sm group hover:scale-105 transition-all">
+                                    <Brain size={16} className="text-stone-200 mb-2 group-hover:text-emerald-500" />
+                                    <p className="text-2xl font-black text-stone-900 tracking-tight">{stats.memories}</p>
+                                    <p className="text-[10px] font-black text-stone-400 uppercase tracking-widest">Memories</p>
                                 </div>
-                                <div className="bg-zinc-950 rounded-lg p-3">
-                                    <p className="text-2xl font-bold text-white">{Math.round(stats.words / 1000)}k</p>
-                                    <p className="text-xs text-zinc-500">Words</p>
+                                <div className="bg-white p-5 rounded-[1.8rem] border border-stone-100 shadow-sm group hover:scale-105 transition-all">
+                                    <BarChart3 size={16} className="text-stone-200 mb-2 group-hover:text-blue-500" />
+                                    <p className="text-2xl font-black text-stone-900 tracking-tight">{Math.round(stats.words / 1000)}k</p>
+                                    <p className="text-[10px] font-black text-stone-400 uppercase tracking-widest">Keywords</p>
                                 </div>
                             </div>
 
-                            {/* Media Stats (if any) */}
-                            {(stats.attachments > 0 || stats.voiceSessions > 0 || stats.dalleGenerations > 0) && (
-                                <div className="grid grid-cols-3 gap-4 mb-4">
-                                    {stats.attachments > 0 && (
-                                        <div className="bg-zinc-950 rounded-lg p-3 border border-violet-500/20">
-                                            <p className="text-xl font-bold text-violet-300">{stats.attachments}</p>
-                                            <p className="text-xs text-zinc-500">📎 Attachments</p>
-                                        </div>
-                                    )}
-                                    {stats.voiceSessions > 0 && (
-                                        <div className="bg-zinc-950 rounded-lg p-3 border border-blue-500/20">
-                                            <p className="text-xl font-bold text-blue-300">{stats.voiceSessions}</p>
-                                            <p className="text-xs text-zinc-500">🎤 Voice Sessions</p>
-                                        </div>
-                                    )}
-                                    {stats.dalleGenerations > 0 && (
-                                        <div className="bg-zinc-950 rounded-lg p-3 border border-pink-500/20">
-                                            <p className="text-xl font-bold text-pink-300">{stats.dalleGenerations}</p>
-                                            <p className="text-xs text-zinc-500">🎨 DALL-E Images</p>
-                                        </div>
-                                    )}
+                            <div className="flex flex-wrap gap-4 items-center">
+                                <div className="flex items-center gap-2 text-stone-400">
+                                    <Clock size={14} />
+                                    <span className="text-[10px] font-bold">
+                                        {stats.dateRange ? `${stats.dateRange.earliest.toLocaleDateString()} — ${stats.dateRange.latest.toLocaleDateString()}` : 'N/A'}
+                                    </span>
                                 </div>
-                            )}
-
-                            {/* Content Type Distribution */}
-                            {Object.keys(stats.contentTypes).length > 0 && (
-                                <div className="mb-4 p-3 bg-zinc-950 rounded-lg">
-                                    <p className="text-xs text-zinc-500 mb-2">Content Types</p>
-                                    <div className="flex flex-wrap gap-2">
-                                        {Object.entries(stats.contentTypes).map(([type, count]) => (
-                                            <span key={type} className="text-xs px-2 py-1 bg-zinc-800 rounded text-zinc-300">
-                                                {type}: {count}
-                                            </span>
-                                        ))}
+                                {stats.errors.length > 0 && (
+                                    <div className="flex items-center gap-2 px-3 py-1.5 rounded-xl bg-amber-50 border border-amber-100 text-amber-600">
+                                        <AlertCircle size={14} />
+                                        <span className="text-[10px] font-black uppercase tracking-tight">{stats.errors.length} Warnings processed</span>
                                     </div>
-                                </div>
-                            )}
+                                )}
+                            </div>
 
-                            {stats.dateRange && (
-                                <p className="text-xs text-zinc-500 mb-4">
-                                    Date range: {stats.dateRange.earliest.toLocaleDateString()} — {stats.dateRange.latest.toLocaleDateString()}
-                                </p>
-                            )}
-
-                            {stats.errors.length > 0 && (
-                                <div className="bg-amber-500/10 border border-amber-500/30 rounded-lg p-3 mb-4">
-                                    <p className="text-sm font-medium text-amber-400 mb-1">
-                                        {stats.errors.length} parsing warnings
-                                    </p>
-                                    <ul className="text-xs text-amber-200/70 list-disc list-inside">
-                                        {stats.errors.slice(0, 3).map((err, i) => (
-                                            <li key={i}>{err}</li>
-                                        ))}
-                                        {stats.errors.length > 3 && (
-                                            <li>...and {stats.errors.length - 3} more</li>
-                                        )}
-                                    </ul>
-                                </div>
-                            )}
-
-                            <div className="flex gap-3">
+                            <div className="flex gap-4">
                                 <button
                                     onClick={() => window.location.href = '/memory'}
-                                    className="px-6 py-2.5 bg-teal-600 hover:bg-teal-500 text-white font-medium rounded-lg transition-colors"
+                                    className="px-8 py-4 bg-stone-900 text-white rounded-2xl font-black text-sm flex items-center justify-center gap-3 hover:bg-stone-800 transition-all shadow-xl shadow-stone-900/10"
                                 >
-                                    View Memory Bank
+                                    View Memory Bank <ArrowRight size={18} />
                                 </button>
                                 <button
                                     onClick={resetImport}
-                                    className="px-6 py-2.5 bg-zinc-800 hover:bg-zinc-700 text-white font-medium rounded-lg transition-colors"
+                                    className="px-8 py-4 bg-white border border-stone-200 text-stone-900 rounded-2xl font-black text-sm flex items-center justify-center gap-3 hover:bg-stone-50 transition-all"
                                 >
                                     Import More
                                 </button>
@@ -333,24 +331,20 @@ export default function ImportPage() {
 
             {/* Error State */}
             {status === 'error' && stats && (
-                <div className="glass-card p-8 rounded-xl border border-red-500/50 bg-red-500/5">
-                    <div className="flex items-start gap-6">
-                        <div className="w-16 h-16 bg-red-500/20 rounded-full flex items-center justify-center shrink-0">
-                            <svg className="w-8 h-8 text-red-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                            </svg>
+                <div className="glass-panel p-10 rounded-[2.5rem] bg-red-50/50 border-red-500/20 animate-shake">
+                    <div className="flex flex-col md:flex-row gap-8 items-center">
+                        <div className="w-20 h-20 bg-red-500/20 rounded-3xl flex items-center justify-center text-red-600 border border-red-500/30">
+                            <AlertCircle size={32} strokeWidth={2.5} />
                         </div>
-                        <div className="flex-1">
-                            <h2 className="text-xl font-bold text-white mb-2">Import Failed</h2>
-                            <p className="text-zinc-300 mb-4">
-                                We couldn't parse the file. Please check the format and try again.
-                            </p>
+                        <div className="flex-1 text-center md:text-left">
+                            <h2 className="text-2xl font-black text-stone-900 tracking-tighter">Bridge Failed</h2>
+                            <p className="text-stone-500 font-medium mb-6">Parsing unsuccessful. The file format may be deprecated or invalid.</p>
 
                             {stats.errors.length > 0 && (
-                                <div className="bg-red-500/10 border border-red-500/30 rounded-lg p-3 mb-4">
-                                    <ul className="text-sm text-red-200/70 list-disc list-inside">
-                                        {stats.errors.map((err, i) => (
-                                            <li key={i}>{err}</li>
+                                <div className="bg-white p-4 rounded-2xl border border-red-100 text-left mb-6">
+                                    <ul className="text-xs font-bold text-red-500 space-y-1">
+                                        {stats.errors.slice(0, 3).map((err, i) => (
+                                            <li key={i} className="flex gap-2"><span>•</span> {err}</li>
                                         ))}
                                     </ul>
                                 </div>
@@ -358,7 +352,7 @@ export default function ImportPage() {
 
                             <button
                                 onClick={resetImport}
-                                className="px-6 py-2.5 bg-zinc-800 hover:bg-zinc-700 text-white font-medium rounded-lg transition-colors"
+                                className="px-8 py-4 bg-stone-900 text-white rounded-2xl font-black text-sm transition-all"
                             >
                                 Try Again
                             </button>
@@ -370,27 +364,30 @@ export default function ImportPage() {
             {/* Drop Zone */}
             {(status === 'idle' || status === 'detecting' || status === 'parsing' || status === 'importing') && (
                 <div
-                    className={`border-2 border-dashed rounded-2xl p-12 text-center transition-all ${isDragging
-                        ? 'border-violet-500 bg-violet-500/10'
-                        : 'border-zinc-800 hover:border-zinc-700 bg-zinc-900/30'
+                    className={`glass-panel p-16 text-center transition-all relative overflow-hidden rounded-[3rem] border-2 border-dashed ${isDragging
+                        ? 'border-primary bg-primary/5'
+                        : 'border-stone-200 bg-white/40 hover:border-stone-300'
                         }`}
                     onDragOver={(e) => { e.preventDefault(); setIsDragging(true); }}
                     onDragLeave={() => setIsDragging(false)}
                     onDrop={handleDrop}
                 >
                     {status === 'idle' && (
-                        <>
-                            <div className="w-16 h-16 bg-zinc-800 rounded-xl flex items-center justify-center mx-auto mb-6">
-                                <svg className="w-8 h-8 text-zinc-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
-                                </svg>
+                        <div className="max-w-2xl mx-auto space-y-8 relative z-10">
+                            <div className="w-20 h-20 bg-stone-100 rounded-[2rem] flex items-center justify-center mx-auto mb-8 shadow-inner border border-stone-50 group-hover:scale-110 transition-transform">
+                                <FileJson className="text-stone-400" size={32} />
                             </div>
-                            <h3 className="text-xl font-medium text-white mb-2">Drop your export file or folder here</h3>
-                            <p className="text-zinc-500 text-sm max-w-md mx-auto mb-6">
-                                Supports JSON exports and <strong className="text-violet-300">full ChatGPT export folders</strong> with voice, images, and DALL-E generations. Your data is parsed locally and never leaves your browser unencrypted.
-                            </p>
 
-                            <div className="flex justify-center gap-3 mb-6">
+                            <div>
+                                <h3 className="text-3xl font-black text-stone-900 tracking-tighter mb-3">Initialize Migration</h3>
+                                <p className="text-stone-500 font-medium leading-relaxed">
+                                    Drop your <span className="text-primary font-bold">.json</span> export file or
+                                    <span className="text-primary font-bold ml-1">full ChatGPT folders</span> here.
+                                    All processing happens locally in your specialized vault.
+                                </p>
+                            </div>
+
+                            <div className="flex flex-col sm:flex-row justify-center gap-4 pt-4">
                                 <input
                                     type="file"
                                     id="file"
@@ -400,9 +397,9 @@ export default function ImportPage() {
                                 />
                                 <label
                                     htmlFor="file"
-                                    className="px-6 py-2.5 bg-gradient-to-r from-violet-600 to-fuchsia-600 hover:from-violet-500 hover:to-fuchsia-500 text-white rounded-lg text-sm font-medium cursor-pointer transition-all shadow-lg shadow-violet-500/20"
+                                    className="px-8 py-4 bg-stone-900 text-white rounded-2xl font-black text-sm cursor-pointer hover:bg-stone-800 transition-all shadow-xl shadow-stone-900/10 flex items-center justify-center gap-2"
                                 >
-                                    Select File
+                                    <FileText size={18} /> Select Export File
                                 </label>
                                 <input
                                     type="file"
@@ -415,75 +412,72 @@ export default function ImportPage() {
                                 />
                                 <button
                                     onClick={() => folderInputRef.current?.click()}
-                                    className="px-6 py-2.5 bg-zinc-800 hover:bg-zinc-700 text-white rounded-lg text-sm font-medium transition-all border border-zinc-700"
+                                    className="px-8 py-4 bg-white border border-stone-200 text-stone-900 rounded-2xl font-black text-sm flex items-center justify-center gap-2 hover:bg-stone-50 transition-all shadow-sm"
                                 >
-                                    📁 Select Folder
+                                    <Folder size={18} /> Browse Folders
                                 </button>
                             </div>
 
-                            <div className="mt-8 pt-6 border-t border-zinc-800">
-                                <p className="text-xs text-zinc-600 mb-3">How to export your data:</p>
-                                <div className="flex justify-center gap-8 text-xs text-zinc-500">
-                                    <div className="text-left">
-                                        <p className="font-medium text-zinc-400 mb-1">ChatGPT</p>
-                                        <p>Settings → Data Controls → Export</p>
-                                        <p className="text-violet-400">📁 Use full folder for media</p>
-                                    </div>
-                                    <div className="text-left">
-                                        <p className="font-medium text-zinc-400 mb-1">Claude</p>
-                                        <p>Settings → Export Conversations</p>
-                                    </div>
-                                    <div className="text-left">
-                                        <p className="font-medium text-zinc-400 mb-1">Gemini</p>
-                                        <p>takeout.google.com → Select Bard</p>
-                                    </div>
+                            <div className="pt-12 grid grid-cols-1 md:grid-cols-3 gap-8 border-t border-stone-100">
+                                <div className="text-left space-y-2">
+                                    <p className="text-[10px] font-black text-primary uppercase tracking-widest">ChatGPT Guide</p>
+                                    <p className="text-[11px] font-bold text-stone-400">Settings → Data → Export data</p>
+                                </div>
+                                <div className="text-left space-y-2">
+                                    <p className="text-[10px] font-black text-stone-500 uppercase tracking-widest">Claude Guide</p>
+                                    <p className="text-[11px] font-bold text-stone-400">Settings → Account → Export</p>
+                                </div>
+                                <div className="text-left space-y-2">
+                                    <p className="text-[10px] font-black text-stone-500 uppercase tracking-widest">Gemini Guide</p>
+                                    <p className="text-[11px] font-bold text-stone-400">Google Takeout → Select Bard</p>
                                 </div>
                             </div>
-                        </>
+                        </div>
                     )}
 
                     {(status === 'detecting' || status === 'parsing' || status === 'importing') && (
-                        <div className="py-8">
-                            <div className="w-12 h-12 border-4 border-violet-500/30 border-t-violet-500 rounded-full animate-spin mx-auto mb-4" />
-                            <h3 className="text-lg font-medium text-white mb-1">
-                                {status === 'detecting' && 'Detecting provider...'}
-                                {status === 'parsing' && 'Parsing conversations...'}
-                                {status === 'importing' && 'Encrypting & importing to vault...'}
+                        <div className="py-20 animate-pulse relative z-10">
+                            <div className="w-16 h-16 border-4 border-primary/20 border-t-primary rounded-full animate-spin mx-auto mb-8" />
+                            <h3 className="text-2xl font-black text-stone-900 tracking-tighter mb-2">
+                                {status === 'detecting' && 'Initializing Detection...'}
+                                {status === 'parsing' && 'Streaming Conversational Data...'}
+                                {status === 'importing' && 'Optimizing Vault Structure...'}
                             </h3>
-                            <p className="text-sm text-zinc-500">
-                                {status === 'detecting' && 'Analyzing file format'}
-                                {status === 'parsing' && 'Extracting messages, media, and insights'}
-                                {status === 'importing' && 'Securing your data locally'}
+                            <p className="text-stone-500 font-medium">
+                                {status === 'detecting' && 'Analyzing schema identifiers'}
+                                {status === 'parsing' && 'Extracting intent and semantic fragments'}
+                                {status === 'importing' && 'Applying local encryption protocols'}
                             </p>
                         </div>
                     )}
+
+                    <div className="absolute top-0 left-0 w-full h-full bg-gradient-to-br from-primary/5 to-transparent opacity-50 pointer-events-none"></div>
                 </div>
             )}
 
-            {/* Preview of detected conversations */}
+            {/* Preview Section */}
             {result && result.conversations.length > 0 && status !== 'complete' && (
-                <div className="mt-6 glass-card rounded-xl p-4">
-                    <h3 className="text-sm font-medium text-zinc-400 mb-3">Preview ({result.conversations.length} conversations)</h3>
-                    <div className="space-y-2 max-h-48 overflow-y-auto">
+                <div className="glass-panel p-8 rounded-[2.5rem] bg-white border-white/60">
+                    <div className="flex items-center gap-2 mb-6">
+                        <HistoryIcon size={18} className="text-stone-400" />
+                        <h3 className="text-xs font-black text-stone-400 uppercase tracking-widest">Stream Preview ({result.conversations.length} Items)</h3>
+                    </div>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3 max-h-72 overflow-y-auto pr-4 scrollbar-hide">
                         {result.conversations.slice(0, 10).map((conv) => (
-                            <div key={conv.id} className="flex items-center justify-between p-2 bg-zinc-950 rounded-lg">
-                                <div className="flex items-center gap-3 min-w-0">
-                                    <span className="text-lg">{providerInfo[conv.metadata.provider].icon}</span>
-                                    <span className="text-sm text-white truncate">{conv.title}</span>
+                            <div key={conv.id} className="flex items-center justify-between p-4 bg-stone-50 border border-stone-100 rounded-2xl group hover:border-primary/20 transition-all">
+                                <div className="flex items-center gap-4 min-w-0">
+                                    <span className="text-xl group-hover:scale-110 transition-transform">{providerInfo[conv.metadata.provider].icon}</span>
+                                    <span className="text-[11px] font-black text-stone-700 truncate">{conv.title}</span>
                                 </div>
-                                <span className="text-xs text-zinc-500 shrink-0 ml-4">
-                                    {conv.metadata.messageCount} msgs
-                                </span>
+                                <div className="flex items-center gap-1.5 shrink-0 ml-4 font-black text-[9px] text-stone-400 uppercase bg-white px-2 py-1 rounded-lg">
+                                    <LinkIcon size={10} /> {conv.metadata.messageCount}
+                                </div>
                             </div>
                         ))}
-                        {result.conversations.length > 10 && (
-                            <p className="text-xs text-zinc-600 text-center py-2">
-                                ...and {result.conversations.length - 10} more
-                            </p>
-                        )}
                     </div>
                 </div>
             )}
         </div>
     );
 }
+

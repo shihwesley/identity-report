@@ -10,6 +10,7 @@ import { render, screen } from '@testing-library/react';
 import { IdentityCard } from '@/components/dashboard/IdentityCard';
 import { PortableProfile, VaultStatus } from '@/lib/types';
 import { MOCK_PROFILES } from '../../fixtures/test-vectors';
+import { axe } from 'vitest-axe';
 
 // ============================================================
 // Test Utilities
@@ -51,7 +52,7 @@ describe('IdentityCard', () => {
       );
 
       expect(screen.getByText('Vault Locked')).toBeInTheDocument();
-      expect(screen.getByText('Identity encryption keys are not active.')).toBeInTheDocument();
+      expect(screen.getByText(/Identity encryption keys are not active/)).toBeInTheDocument();
     });
 
     it('has appropriate styling for locked state', () => {
@@ -64,7 +65,7 @@ describe('IdentityCard', () => {
       );
 
       const card = container.firstChild as HTMLElement;
-      expect(card).toHaveClass('border-red-200');
+      expect(card).toHaveClass('glass-panel');
     });
 
     it('does not show profile information when locked', () => {
@@ -76,7 +77,7 @@ describe('IdentityCard', () => {
         />
       );
 
-      expect(screen.queryByText('Verified')).not.toBeInTheDocument();
+      expect(screen.queryByText('Active DID')).not.toBeInTheDocument();
       expect(screen.queryByText('Memories')).not.toBeInTheDocument();
     });
   });
@@ -106,7 +107,7 @@ describe('IdentityCard', () => {
         />
       );
 
-      expect(screen.getByText('Verified')).toBeInTheDocument();
+      expect(screen.getByText('Active DID')).toBeInTheDocument();
     });
 
     it('displays DID', () => {
@@ -322,7 +323,7 @@ describe('IdentityCard', () => {
         />
       );
 
-      expect(screen.getByText('Permissions')).toBeInTheDocument();
+      expect(screen.getByText('Access')).toBeInTheDocument();
       // The count for both memories and permissions appears
       const zeros = screen.getAllByText('0');
       expect(zeros.length).toBeGreaterThanOrEqual(1);
@@ -429,8 +430,8 @@ describe('IdentityCard', () => {
       );
 
       const card = container.firstChild as HTMLElement;
-      expect(card).toHaveClass('rounded-xl');
-      expect(card).toHaveClass('border');
+      expect(card).toHaveClass('glass-panel');
+      expect(card).toHaveClass('rounded-[2.5rem]');
     });
 
     it('displays avatar with ring styling', () => {
@@ -442,7 +443,7 @@ describe('IdentityCard', () => {
         />
       );
 
-      const avatar = container.querySelector('.ring-4');
+      const avatar = container.querySelector('.rounded-3xl');
       expect(avatar).toBeInTheDocument();
     });
 
@@ -463,6 +464,18 @@ describe('IdentityCard', () => {
   describe('Accessibility', () => {
     const mockProfile = createMockProfile();
     const mockDid = 'did:key:z6MkhaXgBZDvotDkL5257faiztiGiC2QtKLGpbnnEGta2doK';
+
+    it('should have no accessibility violations', async () => {
+      const { container } = render(
+        <IdentityCard
+          profile={mockProfile}
+          did={mockDid}
+          status="unlocked"
+        />
+      );
+      const results = await axe(container);
+      expect(results).toHaveNoViolations();
+    });
 
     it('uses semantic heading for display name', () => {
       render(
@@ -518,7 +531,7 @@ describe('IdentityCard', () => {
       );
 
       expect(screen.getByText('Test User')).toBeInTheDocument();
-      expect(screen.getByText('Verified')).toBeInTheDocument();
+      expect(screen.getByText('Active DID')).toBeInTheDocument();
     });
   });
 
@@ -606,7 +619,7 @@ describe('IdentityCard', () => {
       );
 
       // Should render without crashing
-      expect(screen.getByText('Verified')).toBeInTheDocument();
+      expect(screen.getByText('Active DID')).toBeInTheDocument();
     });
   });
 });

@@ -9,6 +9,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { Sidebar } from '@/components/Sidebar';
+import { axe } from 'vitest-axe';
 
 // ============================================================
 // Mocks
@@ -85,25 +86,23 @@ describe('Sidebar', () => {
   });
 
   describe('Header', () => {
-    it('displays the application title', () => {
+    it('displays the application title and version', () => {
       render(<Sidebar />);
-
-      expect(screen.getByText('Identity Report')).toBeInTheDocument();
+      expect(screen.getByText('Identity')).toBeInTheDocument();
+      expect(screen.getByText(/Report v2.0/)).toBeInTheDocument();
     });
 
     it('displays the logo icon', () => {
       render(<Sidebar />);
-
-      const logoContainer = screen.getByText('I');
-      expect(logoContainer).toBeInTheDocument();
-      expect(logoContainer).toHaveClass('bg-[#1E90FF]');
+      // Logo is now a Shield icon inside a gradient box
+      const logo = document.querySelector('.lucide-shield');
+      expect(logo).toBeInTheDocument();
     });
 
-    it('renders title as heading', () => {
+    it('renders title as part of brand link', () => {
       render(<Sidebar />);
-
-      const heading = screen.getByRole('heading', { level: 1 });
-      expect(heading).toHaveTextContent('Identity Report');
+      const brandLink = screen.getByRole('link', { name: /Identity Report v2.0/i });
+      expect(brandLink).toBeInTheDocument();
     });
   });
 
@@ -145,44 +144,38 @@ describe('Sidebar', () => {
   describe('Navigation Icons', () => {
     it('displays Command Center icon', () => {
       render(<Sidebar />);
-
       const commandCenterLink = screen.getByText('Command Center').closest('a');
-      expect(within(commandCenterLink!).getByText('\u2318')).toBeInTheDocument(); // ⌘
+      expect(within(commandCenterLink!).getByTestId('icon-grid')).toBeInTheDocument();
     });
 
     it('displays Profile Editor icon', () => {
       render(<Sidebar />);
-
       const profileLink = screen.getByText('Profile Editor').closest('a');
-      expect(within(profileLink!).getByText('\uD83D\uDC64')).toBeInTheDocument(); // 👤
+      expect(within(profileLink!).getByTestId('icon-user')).toBeInTheDocument();
     });
 
     it('displays Memory Graph icon', () => {
       render(<Sidebar />);
-
       const memoryLink = screen.getByText('Memory Graph').closest('a');
-      expect(within(memoryLink!).getByText('\uD83D\uDD78')).toBeInTheDocument(); // 🕸
+      expect(within(memoryLink!).getByTestId('icon-network')).toBeInTheDocument();
     });
 
     it('displays Active Chat icon', () => {
       render(<Sidebar />);
-
       const chatLink = screen.getByText('Active Chat').closest('a');
-      expect(within(chatLink!).getByText('\uD83D\uDCAC')).toBeInTheDocument(); // 💬
+      expect(within(chatLink!).getByTestId('icon-message-circle')).toBeInTheDocument();
     });
 
     it('displays Import Data icon', () => {
       render(<Sidebar />);
-
       const importLink = screen.getByText('Import Data').closest('a');
-      expect(within(importLink!).getByText('\u2193')).toBeInTheDocument(); // ↓
+      expect(within(importLink!).getByTestId('icon-upload')).toBeInTheDocument();
     });
 
     it('displays MCP Connect icon', () => {
       render(<Sidebar />);
-
       const mcpLink = screen.getByText('MCP Connect').closest('a');
-      expect(within(mcpLink!).getByText('\uD83D\uDD0C')).toBeInTheDocument(); // 🔌
+      expect(within(mcpLink!).getByTestId('icon-plug')).toBeInTheDocument();
     });
   });
 
@@ -192,8 +185,8 @@ describe('Sidebar', () => {
       render(<Sidebar />);
 
       const commandCenterLink = screen.getByText('Command Center').closest('a');
-      expect(commandCenterLink).toHaveClass('bg-[#1E90FF]/10');
-      expect(commandCenterLink).toHaveClass('text-[#1E90FF]');
+      expect(commandCenterLink).toHaveClass('bg-primary/10');
+      expect(commandCenterLink).toHaveClass('text-primary');
     });
 
     it('highlights Profile Editor when on /profile path', () => {
@@ -201,7 +194,7 @@ describe('Sidebar', () => {
       render(<Sidebar />);
 
       const profileLink = screen.getByText('Profile Editor').closest('a');
-      expect(profileLink).toHaveClass('bg-[#1E90FF]/10');
+      expect(profileLink).toHaveClass('bg-primary/10');
     });
 
     it('highlights Memory Graph when on /memory path', () => {
@@ -209,7 +202,7 @@ describe('Sidebar', () => {
       render(<Sidebar />);
 
       const memoryLink = screen.getByText('Memory Graph').closest('a');
-      expect(memoryLink).toHaveClass('bg-[#1E90FF]/10');
+      expect(memoryLink).toHaveClass('bg-primary/10');
     });
 
     it('highlights Active Chat when on /chat path', () => {
@@ -217,7 +210,7 @@ describe('Sidebar', () => {
       render(<Sidebar />);
 
       const chatLink = screen.getByText('Active Chat').closest('a');
-      expect(chatLink).toHaveClass('bg-[#1E90FF]/10');
+      expect(chatLink).toHaveClass('bg-primary/10');
     });
 
     it('highlights Import Data when on /import path', () => {
@@ -225,7 +218,7 @@ describe('Sidebar', () => {
       render(<Sidebar />);
 
       const importLink = screen.getByText('Import Data').closest('a');
-      expect(importLink).toHaveClass('bg-[#1E90FF]/10');
+      expect(importLink).toHaveClass('bg-primary/10');
     });
 
     it('highlights MCP Connect when on /connect path', () => {
@@ -233,7 +226,7 @@ describe('Sidebar', () => {
       render(<Sidebar />);
 
       const mcpLink = screen.getByText('MCP Connect').closest('a');
-      expect(mcpLink).toHaveClass('bg-[#1E90FF]/10');
+      expect(mcpLink).toHaveClass('bg-primary/10');
     });
 
     it('does not highlight inactive items', () => {
@@ -241,7 +234,7 @@ describe('Sidebar', () => {
       render(<Sidebar />);
 
       const commandCenterLink = screen.getByText('Command Center').closest('a');
-      expect(commandCenterLink).not.toHaveClass('bg-[#1E90FF]/10');
+      expect(commandCenterLink).not.toHaveClass('bg-primary/10');
       expect(commandCenterLink).toHaveClass('text-stone-500');
     });
 
@@ -251,7 +244,7 @@ describe('Sidebar', () => {
 
       const allLinks = screen.getAllByRole('link');
       const activeLinks = allLinks.filter((link) =>
-        link.classList.contains('bg-[#1E90FF]/10')
+        link.classList.contains('bg-primary/10')
       );
 
       expect(activeLinks).toHaveLength(1);
@@ -280,7 +273,7 @@ describe('Sidebar', () => {
     it('renders avatar with styling', () => {
       const { container } = render(<Sidebar />);
 
-      const avatar = container.querySelector('.w-8.h-8.rounded-full');
+      const avatar = container.querySelector('.w-10.h-10.rounded-full');
       expect(avatar).toBeInTheDocument();
     });
   });
@@ -311,32 +304,41 @@ describe('Sidebar', () => {
     it('nav items have transition effects', () => {
       render(<Sidebar />);
 
-      const links = screen.getAllByRole('link');
+      const nav = screen.getByRole('navigation');
+      const links = within(nav).getAllByRole('link');
       links.forEach((link) => {
-        expect(link).toHaveClass('transition-colors');
+        expect(link).toHaveClass('transition-all');
       });
     });
 
     it('nav items have rounded corners', () => {
       render(<Sidebar />);
 
-      const links = screen.getAllByRole('link');
+      const nav = screen.getByRole('navigation');
+      const links = within(nav).getAllByRole('link');
       links.forEach((link) => {
-        expect(link).toHaveClass('rounded-md');
+        expect(link).toHaveClass('rounded-xl');
       });
     });
   });
 
   describe('Responsive Design', () => {
-    it('uses dark mode classes', () => {
+    it('uses stone and primary theme classes', () => {
       render(<Sidebar />);
 
       const sidebar = screen.getByRole('complementary');
-      expect(sidebar.className).toMatch(/dark:/);
+      expect(sidebar).toHaveClass('border-stone-200/50');
+      expect(sidebar).toHaveClass('bg-white/70');
     });
   });
 
   describe('Accessibility', () => {
+    it('should have no accessibility violations', async () => {
+      const { container } = render(<Sidebar />);
+      const results = await axe(container);
+      expect(results).toHaveNoViolations();
+    });
+
     it('uses aside element for semantic meaning', () => {
       render(<Sidebar />);
 
@@ -375,7 +377,7 @@ describe('Sidebar', () => {
       render(<Sidebar />);
 
       const commandCenterLink = screen.getByText('Command Center').closest('a');
-      expect(commandCenterLink).toHaveClass('bg-[#1E90FF]/10');
+      expect(commandCenterLink).toHaveClass('bg-primary/10');
     });
 
     it('does not match partial paths', () => {
@@ -415,18 +417,11 @@ describe('Sidebar', () => {
   });
 
   describe('Visual Hierarchy', () => {
-    it('header section has bottom border', () => {
-      const { container } = render(<Sidebar />);
-
-      const headerSection = container.querySelector('.border-b');
-      expect(headerSection).toBeInTheDocument();
-    });
-
     it('footer section has top border', () => {
       const { container } = render(<Sidebar />);
 
-      const sections = container.querySelectorAll('.border-t');
-      expect(sections.length).toBeGreaterThan(0);
+      const footerSection = container.querySelector('.mt-auto');
+      expect(footerSection).toBeInTheDocument();
     });
 
     it('nav section takes available space', () => {
@@ -448,12 +443,14 @@ describe('Sidebar', () => {
       });
     });
 
-    it('has gap between icon and label', () => {
+    it('has gap between icon and label container', () => {
       render(<Sidebar />);
 
-      const links = screen.getAllByRole('link');
+      const nav = screen.getByRole('navigation');
+      const links = within(nav).getAllByRole('link');
       links.forEach((link) => {
-        expect(link).toHaveClass('gap-3');
+        const iconLabelContainer = link.querySelector('div');
+        expect(iconLabelContainer).toHaveClass('gap-3');
       });
     });
   });

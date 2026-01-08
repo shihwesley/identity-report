@@ -257,6 +257,7 @@ export function SyncStatusPanel({ isOpen, onClose }: SyncStatusPanelProps) {
                     <button
                         onClick={onClose}
                         className="text-gray-500 hover:text-gray-700 dark:hover:text-gray-300"
+                        aria-label="Close"
                     >
                         <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
@@ -268,21 +269,19 @@ export function SyncStatusPanel({ isOpen, onClose }: SyncStatusPanelProps) {
                 <div className="flex border-b dark:border-gray-700">
                     <button
                         onClick={() => setActiveTab('status')}
-                        className={`flex-1 px-4 py-2 text-sm font-medium ${
-                            activeTab === 'status'
+                        className={`flex-1 px-4 py-2 text-sm font-medium ${activeTab === 'status'
                                 ? 'text-blue-600 border-b-2 border-blue-600'
                                 : 'text-gray-500 hover:text-gray-700'
-                        }`}
+                            }`}
                     >
                         Status
                     </button>
                     <button
                         onClick={() => setActiveTab('failed')}
-                        className={`flex-1 px-4 py-2 text-sm font-medium ${
-                            activeTab === 'failed'
+                        className={`flex-1 px-4 py-2 text-sm font-medium ${activeTab === 'failed'
                                 ? 'text-blue-600 border-b-2 border-blue-600'
                                 : 'text-gray-500 hover:text-gray-700'
-                        }`}
+                            }`}
                     >
                         Failed ({status?.deadLetter ?? 0})
                     </button>
@@ -318,9 +317,8 @@ export function SyncStatusPanel({ isOpen, onClose }: SyncStatusPanelProps) {
                                 </div>
                                 <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-2">
                                     <div
-                                        className={`h-2 rounded-full ${
-                                            status.isBlocked ? 'bg-red-500' : 'bg-blue-500'
-                                        }`}
+                                        className={`h-2 rounded-full ${status.isBlocked ? 'bg-red-500' : 'bg-blue-500'
+                                            }`}
                                         style={{
                                             width: `${(status.queueCapacity.used / status.queueCapacity.max) * 100}%`
                                         }}

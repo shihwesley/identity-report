@@ -137,7 +137,7 @@ export function RecoverySetup({
     const renderIntro = () => (
         <div className="space-y-6">
             <div className="text-center">
-                <div className="text-5xl mb-4">🛡️</div>
+                <div className="text-5xl mb-4" aria-hidden="true">🛡️</div>
                 <h2 className="text-2xl font-bold text-white mb-2">
                     Protect Your Account
                 </h2>
@@ -206,6 +206,7 @@ export function RecoverySetup({
                                 <button
                                     onClick={() => removeGuardian(index)}
                                     className="text-red-400 hover:text-red-300 text-sm"
+                                    aria-label={`Remove guardian ${index + 1}`}
                                 >
                                     Remove
                                 </button>
@@ -255,11 +256,10 @@ export function RecoverySetup({
                 <button
                     onClick={() => setStep('settings')}
                     disabled={!canProceed}
-                    className={`flex-1 py-3 rounded-lg font-medium transition-colors ${
-                        canProceed
+                    className={`flex-1 py-3 rounded-lg font-medium transition-colors ${canProceed
                             ? 'bg-emerald-600 text-white hover:bg-emerald-500'
                             : 'bg-zinc-700 text-zinc-500 cursor-not-allowed'
-                    }`}
+                        }`}
                 >
                     Continue ({validGuardians.length} guardians)
                 </button>
@@ -382,7 +382,7 @@ export function RecoverySetup({
     const renderDistribute = () => (
         <div className="space-y-6">
             <div className="text-center">
-                <div className="text-5xl mb-4">✅</div>
+                <div className="text-5xl mb-4" aria-hidden="true">✅</div>
                 <h2 className="text-xl font-bold text-white mb-2">
                     Shares Created Successfully
                 </h2>
@@ -430,7 +430,7 @@ export function RecoverySetup({
 
     const renderComplete = () => (
         <div className="space-y-6 text-center">
-            <div className="text-6xl mb-4">🎉</div>
+            <div className="text-6xl mb-4" aria-hidden="true">🎉</div>
             <h2 className="text-2xl font-bold text-white">
                 Recovery Setup Complete
             </h2>
@@ -482,11 +482,10 @@ export function RecoverySetup({
                         {(['intro', 'guardians', 'settings', 'distribute', 'complete'] as SetupStep[]).map((s, i) => (
                             <div
                                 key={s}
-                                className={`h-1 flex-1 rounded-full ${
-                                    ['intro', 'guardians', 'settings', 'distribute', 'complete'].indexOf(step) >= i
+                                className={`h-1 flex-1 rounded-full ${['intro', 'guardians', 'settings', 'distribute', 'complete'].indexOf(step) >= i
                                         ? 'bg-emerald-500'
                                         : 'bg-zinc-700'
-                                }`}
+                                    }`}
                             />
                         ))}
                     </div>

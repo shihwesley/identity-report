@@ -10,6 +10,7 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
+import { axe } from 'vitest-axe';
 import {
   SyncStatusIndicator,
   SyncStatusBanner,
@@ -114,6 +115,12 @@ describe('SyncStatusIndicator', () => {
   });
 
   describe('Status Display', () => {
+    it('should have no accessibility violations', async () => {
+      const { container } = render(<SyncStatusIndicator onClick={mockOnClick} />);
+      const results = await axe(container);
+      expect(results).toHaveNoViolations();
+    });
+
     it('shows synced status when idle and online', () => {
       render(<SyncStatusIndicator onClick={mockOnClick} />);
 
@@ -249,6 +256,16 @@ describe('SyncStatusBanner', () => {
   });
 
   describe('Visibility', () => {
+    it('should have no accessibility violations when blocked', async () => {
+      updateMockStatus({
+        isBlocked: true,
+        queueCapacity: { used: 100, max: 100 },
+      });
+      const { container } = render(<SyncStatusBanner onOpenDetails={mockOnOpenDetails} />);
+      const results = await axe(container);
+      expect(results).toHaveNoViolations();
+    });
+
     it('does not render when not blocked', () => {
       const { container } = render(<SyncStatusBanner onOpenDetails={mockOnOpenDetails} />);
 
@@ -408,6 +425,14 @@ describe('SyncStatusPanel', () => {
   });
 
   describe('Visibility', () => {
+    it('should have no accessibility violations when open', async () => {
+      const { container } = render(
+        <SyncStatusPanel isOpen={true} onClose={mockOnClose} />
+      );
+      const results = await axe(container);
+      expect(results).toHaveNoViolations();
+    });
+
     it('does not render when not open', () => {
       const { container } = render(
         <SyncStatusPanel isOpen={false} onClose={mockOnClose} />
@@ -428,15 +453,15 @@ describe('SyncStatusPanel', () => {
     it('shows close button', () => {
       render(<SyncStatusPanel isOpen={true} onClose={mockOnClose} />);
 
-      expect(screen.getByRole('button', { name: '' })).toBeInTheDocument();
+      expect(screen.getByRole('button', { name: /Close/i })).toBeInTheDocument();
     });
 
     it('calls onClose when close button clicked', async () => {
       const user = userEvent.setup();
       render(<SyncStatusPanel isOpen={true} onClose={mockOnClose} />);
 
-      // Find the close button (it's the X button in header)
-      const closeButton = screen.getAllByRole('button')[0];
+      // Find the close button (the X button in header)
+      const closeButton = screen.getByRole('button', { name: /Close/i });
       await user.click(closeButton);
 
       expect(mockOnClose).toHaveBeenCalled();

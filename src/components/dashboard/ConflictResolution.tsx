@@ -106,17 +106,17 @@ export function ConflictResolution({
                     <button
                         onClick={onCancel}
                         className="px-4 py-2 text-zinc-400 hover:text-white transition-colors"
+                        aria-label="Cancel"
                     >
                         Cancel
                     </button>
                     <button
                         onClick={handleSubmit}
                         disabled={resolvedCount < totalCount}
-                        className={`px-6 py-2 rounded-lg font-medium transition-colors ${
-                            resolvedCount >= totalCount
+                        className={`px-6 py-2 rounded-lg font-medium transition-colors ${resolvedCount >= totalCount
                                 ? 'bg-emerald-600 hover:bg-emerald-500 text-white'
                                 : 'bg-zinc-700 text-zinc-500 cursor-not-allowed'
-                        }`}
+                            }`}
                     >
                         Apply Resolutions ({resolvedCount}/{totalCount})
                     </button>
@@ -172,15 +172,14 @@ function ConflictCard({ conflict, resolution, onResolve }: ConflictCardProps) {
     const isResolved = resolution !== null;
 
     return (
-        <div className={`border rounded-lg overflow-hidden transition-colors ${
-            isResolved
+        <div className={`border rounded-lg overflow-hidden transition-colors ${isResolved
                 ? 'border-emerald-600 bg-emerald-900/20'
                 : 'border-amber-600 bg-amber-900/20'
-        }`}>
+            }`}>
             {/* Conflict Header */}
             <div className="p-4 flex items-center justify-between">
                 <div className="flex items-center gap-3">
-                    <span className="text-2xl">{getIcon(conflict.type)}</span>
+                    <span className="text-2xl" aria-hidden="true">{getIcon(conflict.type)}</span>
                     <div>
                         <h3 className="font-medium text-white capitalize">
                             {conflict.type} Conflict
@@ -232,11 +231,10 @@ function ConflictCard({ conflict, resolution, onResolve }: ConflictCardProps) {
                                     setSelectedBase('local');
                                     setCustomValue(conflict.localVersion);
                                 }}
-                                className={`px-3 py-1 rounded ${
-                                    selectedBase === 'local'
+                                className={`px-3 py-1 rounded ${selectedBase === 'local'
                                         ? 'bg-blue-600 text-white'
                                         : 'bg-zinc-700 text-zinc-300'
-                                }`}
+                                    }`}
                             >
                                 Local
                             </button>
@@ -245,11 +243,10 @@ function ConflictCard({ conflict, resolution, onResolve }: ConflictCardProps) {
                                     setSelectedBase('remote');
                                     setCustomValue(conflict.remoteVersion);
                                 }}
-                                className={`px-3 py-1 rounded ${
-                                    selectedBase === 'remote'
+                                className={`px-3 py-1 rounded ${selectedBase === 'remote'
                                         ? 'bg-blue-600 text-white'
                                         : 'bg-zinc-700 text-zinc-300'
-                                }`}
+                                    }`}
                             >
                                 Remote
                             </button>
@@ -265,6 +262,7 @@ function ConflictCard({ conflict, resolution, onResolve }: ConflictCardProps) {
                         <button
                             onClick={() => setIsEditing(false)}
                             className="px-4 py-2 text-zinc-400 hover:text-white"
+                            aria-label="Cancel edit"
                         >
                             Cancel
                         </button>
@@ -370,16 +368,14 @@ function VersionCard({ label, version, type, isSelected, onClick, timestamp }: V
     return (
         <button
             onClick={onClick}
-            className={`p-4 rounded-lg border-2 text-left transition-all ${
-                isSelected
+            className={`p-4 rounded-lg border-2 text-left transition-all ${isSelected
                     ? 'border-emerald-500 bg-emerald-900/30'
                     : 'border-zinc-600 bg-zinc-800 hover:border-zinc-500'
-            }`}
+                }`}
         >
             <div className="flex justify-between items-center mb-3">
-                <span className={`text-sm font-medium ${
-                    isSelected ? 'text-emerald-400' : 'text-zinc-400'
-                }`}>
+                <span className={`text-sm font-medium ${isSelected ? 'text-emerald-400' : 'text-zinc-400'
+                    }`}>
                     {label}
                 </span>
                 {isSelected && (
@@ -562,9 +558,8 @@ function JsonEditor({
             <textarea
                 value={jsonStr}
                 onChange={e => handleChange(e.target.value)}
-                className={`w-full h-48 bg-zinc-800 border rounded p-2 text-white font-mono text-sm resize-none ${
-                    error ? 'border-red-500' : 'border-zinc-700'
-                }`}
+                className={`w-full h-48 bg-zinc-800 border rounded p-2 text-white font-mono text-sm resize-none ${error ? 'border-red-500' : 'border-zinc-700'
+                    }`}
             />
             {error && (
                 <p className="text-red-500 text-sm mt-1">{error}</p>
@@ -651,14 +646,12 @@ export function TabAuthorityIndicator({
     if (tabCount <= 1) return null;
 
     return (
-        <div className={`flex items-center gap-2 px-3 py-1 rounded-full text-xs ${
-            hasAuthority
+        <div className={`flex items-center gap-2 px-3 py-1 rounded-full text-xs ${hasAuthority
                 ? 'bg-emerald-900/50 text-emerald-400 border border-emerald-700'
                 : 'bg-zinc-800 text-zinc-400 border border-zinc-700'
-        }`}>
-            <span className={`w-2 h-2 rounded-full ${
-                hasAuthority ? 'bg-emerald-400' : 'bg-zinc-500'
-            }`} />
+            }`}>
+            <span className={`w-2 h-2 rounded-full ${hasAuthority ? 'bg-emerald-400' : 'bg-zinc-500'
+                }`} />
             <span>
                 {hasAuthority ? 'Write access' : 'Read only'}
             </span>

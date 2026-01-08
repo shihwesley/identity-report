@@ -3,55 +3,91 @@
 @theme {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
+  --font-sans: 'Inter', 'Outfit', sans-serif;
 }
 
 :root {
-  /* Context7 Inspired - Stone Theme */
-  --background: #fafaf9;
-  /* stone-50 */
-  --foreground: #1c1917;
-  /* stone-900 */
+  /* Modern Premium Palette - HSL based */
+  --background: 40 10% 98%;    /* #fafaf9 (Stone 50) */
+  --foreground: 24 10% 10%;   /* #1c1917 (Stone 900) */
 
-  --card: #ffffff;
-  --card-foreground: #1c1917;
+  --card: 0 0% 100%;
+  --card-foreground: 24 10% 10%;
 
-  --popover: #ffffff;
-  --popover-foreground: #1c1917;
+  --popover: 0 0% 100%;
+  --popover-foreground: 24 10% 10%;
 
-  /* Dodger Blue Accent */
-  --primary: #1E90FF;
-  --primary-foreground: #ffffff;
+  /* Vibrant Dodger Blue Accent */
+  --primary: 210 100% 56%;    /* #1E90FF */
+  --primary-foreground: 0 0% 100%;
 
-  --secondary: #e7e5e4;
-  /* stone-200 */
-  --secondary-foreground: #1c1917;
+  --secondary: 30 5% 91%;     /* #e7e5e4 (Stone 200) */
+  --secondary-foreground: 24 10% 10%;
 
-  --muted: #f5f5f4;
-  /* stone-100 */
-  --muted-foreground: #78716c;
-  /* stone-500 */
+  --muted: 30 5% 96%;        /* #f5f5f4 (Stone 100) */
+  --muted-foreground: 25 5% 45%; /* #78716c (Stone 500) */
 
-  --accent: #f5f5f4;
-  --accent-foreground: #1c1917;
+  --accent: 210 100% 96%;
+  --accent-foreground: 210 100% 40%;
 
-  --destructive: #ef4444;
-  --destructive-foreground: #fafafa;
+  --destructive: 0 84% 60%;
+  --destructive-foreground: 210 40% 98%;
 
-  --border: #e7e5e4;
-  /* stone-200 */
-  --input: #e7e5e4;
-  --ring: #1E90FF;
+  --border: 30 5% 91%;
+  --input: 30 5% 91%;
+  --ring: 210 100% 56%;
+
+  --radius: 0.75rem;
+
+  /* Glassmorphism Defaults */
+  --glass-bg: rgba(255, 255, 255, 0.7);
+  --glass-border: rgba(255, 255, 255, 0.5);
 }
 
-/* Dark mode removed to enforce Context7 Light Theme consistency */
-/* @media (prefers-color-scheme: dark) { ... } */
-
 body {
-  @apply bg-[var(--background)] text-[var(--foreground)] antialiased font-sans;
+  background-color: hsl(var(--background));
+  color: hsl(var(--foreground));
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
 }
 
 @layer utilities {
   .glass-panel {
-    @apply bg-white dark:bg-stone-900 border border-stone-200 dark:border-stone-800 shadow-sm transition-all;
+    background: var(--glass-bg);
+    backdrop-filter: blur(12px) saturate(180%);
+    -webkit-backdrop-filter: blur(12px) saturate(180%);
+    border: 1px solid var(--glass-border);
+    @apply shadow-xl transition-all duration-300;
+  }
+
+  .glass-card {
+    background: rgba(255, 255, 255, 0.4);
+    backdrop-filter: blur(8px);
+    border: 1px solid rgba(255, 255, 255, 0.3);
+    @apply rounded-2xl shadow-sm hover:shadow-md transition-shadow;
+  }
+
+  .mesh-gradient {
+    background-color: #ffffff;
+    background-image: 
+      radial-gradient(at 0% 0%, rgba(30, 144, 255, 0.15) 0, transparent 50%), 
+      radial-gradient(at 100% 0%, rgba(0, 191, 255, 0.1) 0, transparent 50%),
+      radial-gradient(at 100% 100%, rgba(30, 144, 255, 0.05) 0, transparent 50%),
+      radial-gradient(at 0% 100%, rgba(70, 130, 180, 0.1) 0, transparent 50%);
+  }
+
+  .animate-in {
+    animation: slideUp 0.6s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+  }
+}
+
+@keyframes slideUp {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
   }
 }

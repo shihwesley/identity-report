@@ -8,6 +8,7 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, within, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
+import { axe } from 'vitest-axe';
 import { ConflictResolution, SyncStatus, TabAuthorityIndicator } from '@/components/dashboard/ConflictResolution';
 import { Conflict, ConflictEntityType, Resolution } from '@/lib/sync/types';
 import { MemoryFragment, UserInsight } from '@/lib/types';
@@ -151,6 +152,19 @@ describe('ConflictResolution', () => {
 
       expect(screen.getByText('Resolve Sync Conflicts')).toBeInTheDocument();
       expect(screen.getByText('0 of 1 conflicts resolved')).toBeInTheDocument();
+    });
+
+    it('should have no accessibility violations', async () => {
+      const conflicts = [createMemoryConflict()];
+      const { container } = render(
+        <ConflictResolution
+          conflicts={conflicts}
+          onResolve={mockOnResolve}
+          onCancel={mockOnCancel}
+        />
+      );
+      const results = await axe(container);
+      expect(results).toHaveNoViolations();
     });
 
     it('displays progress bar based on resolved conflicts', () => {
@@ -480,10 +494,28 @@ describe('ConflictResolution', () => {
         />
       );
 
-      const cancelButton = screen.getAllByRole('button', { name: /Cancel/i })[0];
+      const cancelButton = screen.getByRole('button', { name: /Cancel/i });
       await user.click(cancelButton);
 
       expect(mockOnCancel).toHaveBeenCalledTimes(1);
+    });
+
+    it('should have no accessibility violations when submitted', async () => {
+      const user = userEvent.setup();
+      const conflicts = [createMemoryConflict()];
+      const { container } = render(
+        <ConflictResolution
+          conflicts={conflicts}
+          onResolve={mockOnResolve}
+          onCancel={mockOnCancel}
+        />
+      );
+
+      const localButton = screen.getByRole('button', { name: /Local Version/i });
+      await user.click(localButton);
+
+      const results = await axe(container);
+      expect(results).toHaveNoViolations();
     });
   });
 
@@ -624,6 +656,18 @@ describe('SyncStatus', () => {
       );
 
       expect(screen.getByText('Synced')).toBeInTheDocument();
+    });
+
+    it('should have no accessibility violations', async () => {
+      const { container } = render(
+        <SyncStatus
+          status="idle"
+          pendingConflicts={0}
+          lastSyncedAt={Date.now()}
+        />
+      );
+      const results = await axe(container);
+      expect(results).toHaveNoViolations();
     });
 
     it('displays syncing status correctly', () => {

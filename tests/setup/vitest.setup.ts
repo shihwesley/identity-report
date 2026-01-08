@@ -1,6 +1,15 @@
 import '@testing-library/jest-dom/vitest'
 import { vi, beforeAll, afterAll, afterEach } from 'vitest'
 import 'fake-indexeddb/auto'
+import * as axeMatchers from 'vitest-axe/matchers'
+import { expect } from 'vitest'
+
+expect.extend(axeMatchers)
+
+declare module 'vitest' {
+  export interface Assertion<T = any> extends axeMatchers.AxeMatchers { }
+  export interface AsymmetricMatchersContaining extends axeMatchers.AxeMatchers { }
+}
 
 // Use Node.js webcrypto which has better Buffer/ArrayBuffer handling
 const { webcrypto } = await import('crypto')

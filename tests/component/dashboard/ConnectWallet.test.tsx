@@ -8,6 +8,7 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { render, screen, waitFor, act } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
+import { axe } from 'vitest-axe';
 import ConnectWallet from '@/components/dashboard/ConnectWallet';
 
 // ============================================================
@@ -140,6 +141,12 @@ describe('ConnectWallet', () => {
       expect(container.querySelector('.animate-ping')).toBeInTheDocument();
     });
 
+    it('should have no accessibility violations', async () => {
+      const { container } = render(<ConnectWallet onConnected={mockOnConnected} />);
+      const results = await axe(container);
+      expect(results).toHaveNoViolations();
+    });
+
     it('dispatches EIP-6963 request on mount', () => {
       render(<ConnectWallet onConnected={mockOnConnected} />);
 
@@ -185,8 +192,7 @@ describe('ConnectWallet', () => {
       expect(screen.getByText('Select Wallet')).toBeInTheDocument();
 
       // Find and click the close button (the X in the modal header)
-      const closeButtons = screen.getAllByRole('button');
-      const closeButton = closeButtons.find((btn) => btn.textContent === '\u00D7');
+      const closeButton = screen.getByRole('button', { name: /Close/i });
       if (closeButton) {
         await user.click(closeButton);
       }

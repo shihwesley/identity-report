@@ -169,7 +169,7 @@ export default function ConnectWallet({ onConnected }: Props) {
                 <div className="absolute top-full right-0 mt-2 w-64 bg-[#111] border border-white/10 rounded-xl shadow-2xl p-4 z-50 animate-in fade-in slide-in-from-top-2">
                     <div className="flex justify-between items-center mb-3">
                         <h3 className="text-sm font-semibold text-white">Select Wallet</h3>
-                        <button onClick={() => setShowModal(false)} className="text-zinc-500 hover:text-white">×</button>
+                        <button onClick={() => setShowModal(false)} className="text-zinc-500 hover:text-white" aria-label="Close">×</button>
                     </div>
 
                     <div className="flex flex-col gap-2">

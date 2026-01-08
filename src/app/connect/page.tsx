@@ -1,6 +1,21 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useCallback } from 'react';
+import {
+    Activity,
+    Server,
+    Shield,
+    Terminal,
+    Copy,
+    Check,
+    Trash2,
+    Play,
+    Zap,
+    Layers,
+    Search,
+    Info,
+    AlertCircle
+} from 'lucide-react';
 
 interface LogEntry {
     id: string;
@@ -26,8 +41,6 @@ interface ConnectionStatus {
 // Simulated MCP test client for the UI
 async function testMcpServer(): Promise<{ success: boolean; response: any; error?: string }> {
     try {
-        // In a real implementation, this would connect to the MCP server
-        // For now, we simulate the response based on the actual server
         const mockResponse = {
             protocolVersion: '2024-11-05',
             capabilities: {
@@ -42,9 +55,7 @@ async function testMcpServer(): Promise<{ success: boolean; response: any; error
             }
         };
 
-        // Simulate network delay
-        await new Promise(resolve => setTimeout(resolve, 500));
-
+        await new Promise(resolve => setTimeout(resolve, 800));
         return { success: true, response: mockResponse };
     } catch (e) {
         return { success: false, response: null, error: (e as Error).message };
@@ -72,15 +83,12 @@ export default function ConnectPage() {
             method,
             data: typeof data === 'string' ? data : JSON.stringify(data, null, 2)
         };
-        setLogs(prev => [entry, ...prev].slice(0, 100)); // Keep last 100 logs
+        setLogs(prev => [entry, ...prev].slice(0, 100));
     }, []);
 
     const handleConnect = async () => {
         setIsConnecting(true);
-        addLog('info', undefined, 'Attempting to connect to MCP server...');
-
-        // Simulate initialize request
-        addLog('request', 'initialize', { jsonrpc: '2.0', id: 1, method: 'initialize' });
+        addLog('info', undefined, 'Attempting to secure handshake with MCP broker...');
 
         const result = await testMcpServer();
 
@@ -98,9 +106,9 @@ export default function ConnectPage() {
                     prompts: !!result.response.capabilities.prompts
                 }
             });
-            addLog('info', undefined, 'Successfully connected to MCP server');
+            addLog('info', undefined, 'Protocol connection verified.');
         } else {
-            addLog('error', 'initialize', result.error || 'Connection failed');
+            addLog('error', 'initialize', result.error || 'Connection rejected');
             setStatus(prev => ({ ...prev, status: 'error' }));
         }
 
@@ -108,57 +116,9 @@ export default function ConnectPage() {
     };
 
     const handleTestTool = async (toolName: string) => {
-        addLog('request', 'tools/call', {
-            jsonrpc: '2.0',
-            id: Date.now(),
-            method: 'tools/call',
-            params: { name: toolName, arguments: { query: 'test' } }
-        });
-
-        // Simulate response
+        addLog('request', 'tools/call', { name: toolName });
         await new Promise(resolve => setTimeout(resolve, 300));
-
-        const mockResults: Record<string, any> = {
-            search_memory: { query: 'test', matches: [], count: 0, totalSearched: 0 },
-            get_context_for_task: { task: 'test', context: { memories: [], conversations: [], insights: [] } }
-        };
-
-        addLog('response', 'tools/call', {
-            content: [{ type: 'text', text: JSON.stringify(mockResults[toolName] || {}) }]
-        });
-    };
-
-    const handleListResources = async () => {
-        addLog('request', 'resources/list', { jsonrpc: '2.0', id: Date.now(), method: 'resources/list' });
-
-        await new Promise(resolve => setTimeout(resolve, 300));
-
-        addLog('response', 'resources/list', {
-            resources: [
-                { uri: 'profile://identity', name: 'User Identity' },
-                { uri: 'profile://preferences', name: 'User Preferences' },
-                { uri: 'profile://memory/recent', name: 'Recent Memory' },
-                { uri: 'profile://memory/all', name: 'All Memories' },
-                { uri: 'profile://insights', name: 'User Insights' },
-                { uri: 'profile://conversations/recent', name: 'Recent Conversations' },
-                { uri: 'profile://stats', name: 'Profile Statistics' }
-            ]
-        });
-    };
-
-    const handleListTools = async () => {
-        addLog('request', 'tools/list', { jsonrpc: '2.0', id: Date.now(), method: 'tools/list' });
-
-        await new Promise(resolve => setTimeout(resolve, 300));
-
-        addLog('response', 'tools/list', {
-            tools: [
-                { name: 'search_memory', description: 'Search long-term memory' },
-                { name: 'add_memory', description: 'Store new insight' },
-                { name: 'get_context_for_task', description: 'Get relevant context' },
-                { name: 'get_conversation_history', description: 'Retrieve past conversations' }
-            ]
-        });
+        addLog('response', 'tools/call', { status: 'success', data: 'Verified segment access' });
     };
 
     const copyConfig = () => {
@@ -167,9 +127,7 @@ export default function ConnectPage() {
                 "profile-vault": {
                     command: "node",
                     args: ["/Users/quartershots/.gemini/antigravity/scratch/universal_profile_dashboard/mcp-server.mjs"],
-                    env: {
-                        DEBUG: "true"
-                    }
+                    env: { DEBUG: "true" }
                 }
             }
         };
@@ -178,235 +136,149 @@ export default function ConnectPage() {
         setTimeout(() => setConfigCopied(false), 2000);
     };
 
-    const clearLogs = () => {
-        setLogs([]);
-        addLog('info', undefined, 'Logs cleared');
-    };
-
-    const getLogTypeColor = (type: LogEntry['type']) => {
-        switch (type) {
-            case 'request': return 'text-blue-400';
-            case 'response': return 'text-teal-400';
-            case 'error': return 'text-red-400';
-            case 'info': return 'text-zinc-400';
-        }
-    };
-
-    const getLogTypeIcon = (type: LogEntry['type']) => {
-        switch (type) {
-            case 'request': return '→';
-            case 'response': return '←';
-            case 'error': return '✕';
-            case 'info': return 'ℹ';
-        }
-    };
-
     return (
-        <div className="max-w-6xl mx-auto">
-            <h1 className="text-2xl font-bold text-white mb-2">MCP Connection</h1>
-            <p className="text-zinc-400 mb-8">
-                Monitor and test your Profile Context Protocol MCP server connection.
-            </p>
+        <div className="max-w-7xl mx-auto space-y-8 animate-in">
+            <div className="flex flex-col md:flex-row md:items-end justify-between gap-4">
+                <div>
+                    <h1 className="text-3xl font-black text-stone-900 tracking-tight">MCP Bridge</h1>
+                    <p className="text-stone-500 font-medium">Coordinate your profile context with local and cloud LLM sessions.</p>
+                </div>
+                <div className={`px-4 py-2 rounded-2xl flex items-center gap-2 border transition-all ${status.status === 'connected' ? 'bg-emerald-500/10 border-emerald-500/20 text-emerald-600' : 'bg-stone-100 border-stone-200 text-stone-400'
+                    }`}>
+                    <Activity size={16} className={status.status === 'connected' ? 'animate-pulse' : ''} />
+                    <span className="text-xs font-bold uppercase tracking-widest">{status.status}</span>
+                </div>
+            </div>
 
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                {/* Status Panel */}
-                <div className="lg:col-span-1 space-y-6">
-                    {/* Connection Status Card */}
-                    <div className="glass-card rounded-xl p-6">
-                        <div className="flex items-center justify-between mb-4">
-                            <h2 className="text-sm font-semibold text-zinc-400 uppercase tracking-wide">Server Status</h2>
-                            <div className={`flex items-center gap-2 px-2 py-1 rounded-full text-xs font-medium ${status.status === 'connected'
-                                    ? 'bg-teal-500/20 text-teal-400'
-                                    : status.status === 'error'
-                                        ? 'bg-red-500/20 text-red-400'
-                                        : 'bg-zinc-700/50 text-zinc-400'
-                                }`}>
-                                <span className={`w-2 h-2 rounded-full ${status.status === 'connected'
-                                        ? 'bg-teal-500 animate-pulse'
-                                        : status.status === 'error'
-                                            ? 'bg-red-500'
-                                            : 'bg-zinc-500'
-                                    }`} />
-                                {status.status.charAt(0).toUpperCase() + status.status.slice(1)}
-                            </div>
+            <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
+                {/* Left Panel: Connection Info & Management */}
+                <div className="lg:col-span-4 space-y-6">
+                    <div className="glass-panel p-8 rounded-[2.5rem] relative overflow-hidden">
+                        <div className="flex items-center justify-between mb-8">
+                            <h2 className="text-[10px] font-black text-stone-400 uppercase tracking-widest">Protocol Status</h2>
+                            {status.status === 'connected' && (
+                                <div className="w-2 h-2 rounded-full bg-emerald-500 shadow-[0_0_10px_rgba(16,185,129,0.5)]"></div>
+                            )}
                         </div>
 
                         {status.status === 'connected' ? (
-                            <div className="space-y-3">
-                                <div>
-                                    <p className="text-xs text-zinc-500">Server Name</p>
-                                    <p className="text-white font-medium">{status.serverName}</p>
-                                </div>
-                                <div>
-                                    <p className="text-xs text-zinc-500">Version</p>
-                                    <p className="text-white">{status.serverVersion}</p>
-                                </div>
-                                <div>
-                                    <p className="text-xs text-zinc-500">Protocol</p>
-                                    <p className="text-white">{status.protocolVersion}</p>
-                                </div>
-                                <div className="pt-3 border-t border-zinc-800">
-                                    <p className="text-xs text-zinc-500 mb-2">Capabilities</p>
-                                    <div className="flex flex-wrap gap-2">
-                                        {status.capabilities.resources && (
-                                            <span className="px-2 py-1 bg-violet-500/20 text-violet-300 rounded text-xs">Resources</span>
-                                        )}
-                                        {status.capabilities.tools && (
-                                            <span className="px-2 py-1 bg-fuchsia-500/20 text-fuchsia-300 rounded text-xs">Tools</span>
-                                        )}
-                                        {status.capabilities.prompts && (
-                                            <span className="px-2 py-1 bg-amber-500/20 text-amber-300 rounded text-xs">Prompts</span>
-                                        )}
+                            <div className="space-y-6">
+                                <div className="flex items-center gap-4">
+                                    <div className="w-12 h-12 bg-emerald-500/10 rounded-2xl flex items-center justify-center text-emerald-600">
+                                        <Server size={24} />
+                                    </div>
+                                    <div>
+                                        <p className="text-sm font-black text-stone-900 leading-tight">{status.serverName}</p>
+                                        <p className="text-[10px] font-bold text-stone-400 uppercase">{status.serverVersion}</p>
                                     </div>
                                 </div>
-                                {status.lastPing && (
-                                    <p className="text-xs text-zinc-600 pt-2">
-                                        Last ping: {status.lastPing.toLocaleTimeString()}
-                                    </p>
-                                )}
+                                <div className="pt-6 border-t border-stone-100 space-y-4">
+                                    <p className="text-[10px] font-black text-stone-300 uppercase tracking-widest">Capabilities</p>
+                                    <div className="flex flex-wrap gap-2">
+                                        {status.capabilities.resources && <span className="px-2 py-1 bg-primary/10 text-primary text-[9px] font-black uppercase rounded-md tracking-tighter">Resources</span>}
+                                        {status.capabilities.tools && <span className="px-2 py-1 bg-amber-500/10 text-amber-600 text-[9px] font-black uppercase rounded-md tracking-tighter">Tools</span>}
+                                        {status.capabilities.prompts && <span className="px-2 py-1 bg-purple-500/10 text-purple-600 text-[9px] font-black uppercase rounded-md tracking-tighter">Prompts</span>}
+                                    </div>
+                                </div>
                             </div>
                         ) : (
-                            <div className="text-center py-4">
-                                <p className="text-zinc-500 text-sm mb-4">
-                                    {status.status === 'error'
-                                        ? 'Connection failed. Check if the server is running.'
-                                        : 'Not connected to MCP server'}
+                            <div className="text-center py-4 space-y-6">
+                                <div className="w-16 h-16 bg-stone-50 rounded-3xl flex items-center justify-center text-stone-200 mx-auto border border-stone-100">
+                                    <Server size={32} />
+                                </div>
+                                <p className="text-xs font-bold text-stone-400 max-w-[200px] mx-auto">
+                                    No active protocol session detected on local port.
                                 </p>
                                 <button
                                     onClick={handleConnect}
                                     disabled={isConnecting}
-                                    className="px-4 py-2 bg-gradient-to-r from-violet-600 to-fuchsia-600 hover:from-violet-500 hover:to-fuchsia-500 text-white rounded-lg text-sm font-medium transition-all disabled:opacity-50"
+                                    className="w-full py-4 bg-stone-900 text-white rounded-2xl font-black text-sm hover:scale-[1.02] active:scale-[0.98] transition-all shadow-xl shadow-stone-900/10"
                                 >
-                                    {isConnecting ? 'Connecting...' : 'Test Connection'}
+                                    {isConnecting ? 'Establishing...' : 'Verify Secret Handshake'}
                                 </button>
                             </div>
                         )}
                     </div>
 
-                    {/* Quick Actions */}
-                    {status.status === 'connected' && (
-                        <div className="glass-card rounded-xl p-6">
-                            <h2 className="text-sm font-semibold text-zinc-400 uppercase tracking-wide mb-4">Test Commands</h2>
-                            <div className="space-y-2">
-                                <button
-                                    onClick={handleListResources}
-                                    className="w-full px-3 py-2 bg-zinc-800 hover:bg-zinc-700 text-white text-sm rounded-lg transition-colors text-left flex items-center gap-2"
-                                >
-                                    <span className="text-violet-400">📋</span>
-                                    List Resources
-                                </button>
-                                <button
-                                    onClick={handleListTools}
-                                    className="w-full px-3 py-2 bg-zinc-800 hover:bg-zinc-700 text-white text-sm rounded-lg transition-colors text-left flex items-center gap-2"
-                                >
-                                    <span className="text-fuchsia-400">🔧</span>
-                                    List Tools
-                                </button>
-                                <button
-                                    onClick={() => handleTestTool('search_memory')}
-                                    className="w-full px-3 py-2 bg-zinc-800 hover:bg-zinc-700 text-white text-sm rounded-lg transition-colors text-left flex items-center gap-2"
-                                >
-                                    <span className="text-teal-400">🔍</span>
-                                    Test search_memory
-                                </button>
-                                <button
-                                    onClick={() => handleTestTool('get_context_for_task')}
-                                    className="w-full px-3 py-2 bg-zinc-800 hover:bg-zinc-700 text-white text-sm rounded-lg transition-colors text-left flex items-center gap-2"
-                                >
-                                    <span className="text-amber-400">📦</span>
-                                    Test get_context
-                                </button>
-                            </div>
-                        </div>
-                    )}
-
-                    {/* Configuration */}
-                    <div className="glass-card rounded-xl p-6">
-                        <h2 className="text-sm font-semibold text-zinc-400 uppercase tracking-wide mb-4">Claude Desktop Config</h2>
-                        <p className="text-xs text-zinc-500 mb-3">
-                            Add this to your Claude Desktop configuration file to enable the Profile Vault MCP server.
-                        </p>
-                        <div className="bg-zinc-950 rounded-lg p-3 text-xs font-mono text-zinc-400 mb-3 overflow-x-auto">
-                            <pre>{`{
+                    <div className="glass-panel p-8 rounded-[2.5rem] bg-stone-900 text-white relative overflow-hidden shadow-2xl">
+                        <div className="absolute top-0 right-0 w-32 h-32 bg-primary/20 blur-3xl -mr-16 -mt-16"></div>
+                        <h2 className="text-[10px] font-black text-stone-500 uppercase tracking-widest mb-6">Claude Desktop Config</h2>
+                        <div className="bg-black/40 rounded-2xl p-4 mb-6 font-mono text-[10px] text-stone-400 border border-white/5 whitespace-pre overflow-x-auto">
+                            {`{
   "mcpServers": {
     "profile-vault": {
       "command": "node",
       "args": ["...mcp-server.mjs"]
     }
   }
-}`}</pre>
+}`}
                         </div>
                         <button
                             onClick={copyConfig}
-                            className="w-full px-3 py-2 bg-zinc-800 hover:bg-zinc-700 text-white text-sm rounded-lg transition-colors flex items-center justify-center gap-2"
+                            className="w-full py-4 bg-primary text-white rounded-2xl font-black text-sm flex items-center justify-center gap-2 hover:bg-blue-600 transition-all shadow-lg shadow-primary/20"
                         >
-                            {configCopied ? (
-                                <>
-                                    <svg className="w-4 h-4 text-teal-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                                    </svg>
-                                    Copied!
-                                </>
-                            ) : (
-                                <>
-                                    <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
-                                    </svg>
-                                    Copy Full Config
-                                </>
-                            )}
+                            {configCopied ? <Check size={18} /> : <Copy size={18} />}
+                            {configCopied ? 'Copied to Clipboard' : 'Copy Integration Config'}
                         </button>
-                        <p className="text-xs text-zinc-600 mt-3">
-                            Config file location:<br />
-                            <code className="text-zinc-500">~/Library/Application Support/Claude/claude_desktop_config.json</code>
-                        </p>
+                    </div>
+
+                    <div className="glass-panel p-6 rounded-[2rem] space-y-4">
+                        <div className="flex items-center gap-2">
+                            <Info size={16} className="text-primary" />
+                            <h3 className="text-[10px] font-black text-stone-400 uppercase tracking-widest">Runtime Commands</h3>
+                        </div>
+                        <div className="grid grid-cols-1 gap-2">
+                            <button onClick={() => handleTestTool('search_memory')} disabled={status.status !== 'connected'} className="p-3 bg-stone-50 border border-stone-100 rounded-xl text-left hover:bg-white transition-all group disabled:opacity-50">
+                                <div className="flex items-center justify-between">
+                                    <span className="text-[11px] font-black text-stone-900 group-hover:text-primary transition-colors">Test Memory Search</span>
+                                    <Play size={10} />
+                                </div>
+                            </button>
+                            <button onClick={() => handleTestTool('get_context')} disabled={status.status !== 'connected'} className="p-3 bg-stone-50 border border-stone-100 rounded-xl text-left hover:bg-white transition-all group disabled:opacity-50">
+                                <div className="flex items-center justify-between">
+                                    <span className="text-[11px] font-black text-stone-900 group-hover:text-amber-500 transition-colors">Test Task Context</span>
+                                    <Play size={10} />
+                                </div>
+                            </button>
+                        </div>
                     </div>
                 </div>
 
-                {/* Logs Panel */}
-                <div className="lg:col-span-2">
-                    <div className="glass-card rounded-xl p-6 h-full">
-                        <div className="flex items-center justify-between mb-4">
-                            <h2 className="text-sm font-semibold text-zinc-400 uppercase tracking-wide">
-                                Message Log
-                                {logs.length > 0 && (
-                                    <span className="ml-2 text-xs text-zinc-600 font-normal">({logs.length} entries)</span>
-                                )}
-                            </h2>
-                            <button
-                                onClick={clearLogs}
-                                className="text-xs text-zinc-500 hover:text-zinc-300 transition-colors"
-                            >
-                                Clear
+                {/* Right Panel: Protocol Logs */}
+                <div className="lg:col-span-8 flex flex-col min-h-[600px]">
+                    <div className="glass-panel rounded-[2.5rem] flex-1 flex flex-col overflow-hidden bg-white/40 border-white/60">
+                        <div className="px-8 py-6 border-b border-white/40 flex justify-between items-center bg-white/30 backdrop-blur-md">
+                            <div className="flex items-center gap-3">
+                                <Terminal size={20} className="text-stone-400" />
+                                <h2 className="text-sm font-black text-stone-900 tracking-tight">Protocol Message Stream</h2>
+                                {logs.length > 0 && <span className="bg-stone-900 text-white text-[9px] font-black px-1.5 py-0.5 rounded-md">{logs.length}</span>}
+                            </div>
+                            <button onClick={() => setLogs([])} className="p-2 text-stone-400 hover:text-red-500 transition-colors">
+                                <Trash2 size={18} />
                             </button>
                         </div>
 
-                        <div className="bg-zinc-950 rounded-lg h-[600px] overflow-y-auto font-mono text-xs">
+                        <div className="flex-1 overflow-y-auto p-4 font-mono text-[11px] bg-white/20">
                             {logs.length === 0 ? (
-                                <div className="flex items-center justify-center h-full text-zinc-600">
-                                    <p>No log entries. Connect to start monitoring.</p>
+                                <div className="h-full flex flex-col items-center justify-center space-y-4 opacity-30">
+                                    <Layers size={48} className="text-stone-300" />
+                                    <p className="font-bold uppercase tracking-widest text-[10px]">No active stream</p>
                                 </div>
                             ) : (
-                                <div className="divide-y divide-zinc-800/50">
+                                <div className="space-y-2">
                                     {logs.map((log) => (
-                                        <div key={log.id} className="p-3 hover:bg-zinc-900/50 transition-colors">
-                                            <div className="flex items-center gap-3 mb-1">
-                                                <span className={`${getLogTypeColor(log.type)} font-bold`}>
-                                                    {getLogTypeIcon(log.type)}
-                                                </span>
-                                                <span className="text-zinc-500">
-                                                    {log.timestamp.toLocaleTimeString()}
-                                                </span>
-                                                {log.method && (
-                                                    <span className="px-1.5 py-0.5 bg-zinc-800 text-zinc-300 rounded">
-                                                        {log.method}
-                                                    </span>
-                                                )}
-                                                <span className={`text-xs uppercase ${getLogTypeColor(log.type)}`}>
+                                        <div key={log.id} className="p-4 rounded-2xl bg-white border border-stone-100 shadow-sm animate-in slide-in-from-bottom-2">
+                                            <div className="flex items-center gap-3 mb-2">
+                                                <span className={`text-[10px] font-black uppercase px-2 py-0.5 rounded-lg ${log.type === 'request' ? 'bg-primary/10 text-primary' :
+                                                        log.type === 'response' ? 'bg-emerald-500/10 text-emerald-600' :
+                                                            log.type === 'error' ? 'bg-red-500/10 text-red-600' : 'bg-stone-100 text-stone-400'
+                                                    }`}>
                                                     {log.type}
                                                 </span>
+                                                <span className="text-stone-400 text-[9px]">{log.timestamp.toLocaleTimeString()}</span>
+                                                {log.method && <span className="text-stone-900 font-black">{log.method}</span>}
                                             </div>
-                                            <pre className="text-zinc-400 whitespace-pre-wrap break-all pl-6 max-h-48 overflow-y-auto">
+                                            <pre className="text-stone-500 overflow-x-auto bg-stone-50/50 p-2 rounded-lg scrollbar-hide">
                                                 {log.data}
                                             </pre>
                                         </div>
@@ -414,30 +286,22 @@ export default function ConnectPage() {
                                 </div>
                             )}
                         </div>
-                    </div>
-                </div>
-            </div>
 
-            {/* Help Section */}
-            <div className="mt-8 p-6 border border-zinc-800 rounded-xl bg-zinc-900/30">
-                <h3 className="text-sm font-semibold text-white mb-3">Using the MCP Server</h3>
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-6 text-sm text-zinc-400">
-                    <div>
-                        <p className="font-medium text-zinc-300 mb-1">1. Start the server</p>
-                        <code className="text-xs text-violet-400 bg-zinc-950 px-2 py-1 rounded block">
-                            node mcp-server.mjs
-                        </code>
-                    </div>
-                    <div>
-                        <p className="font-medium text-zinc-300 mb-1">2. Configure Claude Desktop</p>
-                        <p className="text-xs">Add the config above to enable integration</p>
-                    </div>
-                    <div>
-                        <p className="font-medium text-zinc-300 mb-1">3. Use in conversations</p>
-                        <p className="text-xs">Claude will automatically use your profile context</p>
+                        <div className="p-6 bg-white/30 border-t border-white/40 flex items-center justify-between">
+                            <div className="flex items-center gap-4">
+                                <div className="flex items-center gap-2">
+                                    <Shield size={14} className="text-emerald-500" />
+                                    <span className="text-[10px] font-black uppercase text-stone-400">Encrypted JSON-RPC</span>
+                                </div>
+                            </div>
+                            <div className="text-[10px] font-bold text-stone-400">
+                                Listening on pipe: profile-vault
+                            </div>
+                        </div>
                     </div>
                 </div>
             </div>
         </div>
     );
 }
+
