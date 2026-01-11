@@ -725,19 +725,20 @@ export function applyResolutions(
 
         switch (conflict.type) {
             case 'memory':
-                updateMemoryInProfile(result, conflict.entityId, resolved as MemoryFragment);
+                updateInArray(result.shortTermMemory, conflict.entityId, resolved as MemoryFragment) ||
+                updateInArray(result.longTermMemory, conflict.entityId, resolved as MemoryFragment);
                 break;
             case 'conversation':
-                updateConversationInProfile(result, conflict.entityId, resolved as Conversation);
+                updateInArray(result.conversations, conflict.entityId, resolved as Conversation);
                 break;
             case 'insight':
-                updateInsightInProfile(result, conflict.entityId, resolved as UserInsight);
+                updateInArray(result.insights, conflict.entityId, resolved as UserInsight);
                 break;
             case 'preference':
-                updatePreferenceInProfile(result, conflict.entityId, resolved as SystemPreference);
+                updateInArray(result.preferences, conflict.entityId, resolved as SystemPreference);
                 break;
             case 'project':
-                updateProjectInProfile(result, conflict.entityId, resolved as ProjectContext);
+                updateInArray(result.projects, conflict.entityId, resolved as ProjectContext);
                 break;
             case 'identity':
                 result.identity = resolved as UserIdentity;
@@ -748,42 +749,8 @@ export function applyResolutions(
     return result;
 }
 
-function updateMemoryInProfile(profile: PortableProfile, id: string, memory: MemoryFragment): void {
-    const shortIdx = profile.shortTermMemory.findIndex(m => m.id === id);
-    if (shortIdx >= 0) {
-        profile.shortTermMemory[shortIdx] = memory;
-        return;
-    }
-    const longIdx = profile.longTermMemory.findIndex(m => m.id === id);
-    if (longIdx >= 0) {
-        profile.longTermMemory[longIdx] = memory;
-    }
-}
-
-function updateConversationInProfile(profile: PortableProfile, id: string, conversation: Conversation): void {
-    const idx = profile.conversations.findIndex(c => c.id === id);
-    if (idx >= 0) {
-        profile.conversations[idx] = conversation;
-    }
-}
-
-function updateInsightInProfile(profile: PortableProfile, id: string, insight: UserInsight): void {
-    const idx = profile.insights.findIndex(i => i.id === id);
-    if (idx >= 0) {
-        profile.insights[idx] = insight;
-    }
-}
-
-function updatePreferenceInProfile(profile: PortableProfile, id: string, preference: SystemPreference): void {
-    const idx = profile.preferences.findIndex(p => p.id === id);
-    if (idx >= 0) {
-        profile.preferences[idx] = preference;
-    }
-}
-
-function updateProjectInProfile(profile: PortableProfile, id: string, project: ProjectContext): void {
-    const idx = profile.projects.findIndex(p => p.id === id);
-    if (idx >= 0) {
-        profile.projects[idx] = project;
-    }
+function updateInArray<T extends { id: string }>(arr: T[], id: string, item: T): boolean {
+    const idx = arr.findIndex(x => x.id === id);
+    if (idx >= 0) { arr[idx] = item; return true; }
+    return false;
 }

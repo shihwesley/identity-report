@@ -1,7 +1,6 @@
 import fs from 'fs';
-import path from 'path';
 import { OpenAIImporter } from '../src/lib/importers/openai';
-import { PortableProfile, Conversation, MemoryFragment } from '../src/lib/types';
+import { PortableProfile } from '../src/lib/types';
 
 // Mock minimal profile structure since we are running outside of the full browser/indexeddb environment
 // We will just output a JSON file that the dashboard can read.

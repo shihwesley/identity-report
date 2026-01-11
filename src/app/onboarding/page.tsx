@@ -25,7 +25,7 @@ export default function OnboardingPage() {
             const newMnemonic = generateMnemonic();
             setMnemonic(newMnemonic);
             setStep('mnemonic');
-        } catch (e) {
+        } catch {
             setError('Failed to generate wallet. Please try again.');
         }
         setIsLoading(false);
@@ -54,7 +54,7 @@ export default function OnboardingPage() {
             }
             setMnemonic(inputMnemonic.trim());
             setStep('password');
-        } catch (e) {
+        } catch {
             setError('Failed to validate phrase. Please try again.');
         }
         setIsLoading(false);
@@ -190,7 +190,7 @@ export default function OnboardingPage() {
                                 onClick={handleConfirmMnemonic}
                                 className="w-full py-3 bg-gradient-to-r from-violet-600 to-fuchsia-600 hover:from-violet-500 hover:to-fuchsia-500 text-white rounded-xl font-medium transition-all shadow-lg shadow-violet-500/20"
                             >
-                                I've Saved My Recovery Phrase
+                                I&apos;ve Saved My Recovery Phrase
                             </button>
                         </div>
                     )}
@@ -243,7 +243,7 @@ export default function OnboardingPage() {
                             <div className="text-center">
                                 <h2 className="text-xl font-semibold text-white mb-2">Set Your Password</h2>
                                 <p className="text-zinc-400 text-sm">
-                                    This password encrypts your vault. You'll need it along with your recovery phrase to unlock.
+                                    This password encrypts your vault. You&apos;ll need it along with your recovery phrase to unlock.
                                 </p>
                             </div>
 

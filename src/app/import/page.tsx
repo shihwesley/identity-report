@@ -12,14 +12,12 @@ import {
 import { AIProvider, MessageContentType } from '@/lib/types';
 import {
     CloudIcon,
-    ShieldCheck,
     Zap,
     Folder,
     FileText,
     CheckCircle2,
     AlertCircle,
     ArrowRight,
-    Search,
     BarChart3,
     Clock,
     FileJson,

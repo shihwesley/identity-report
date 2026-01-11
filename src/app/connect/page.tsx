@@ -10,11 +10,8 @@ import {
     Check,
     Trash2,
     Play,
-    Zap,
     Layers,
-    Search,
-    Info,
-    AlertCircle
+    Info
 } from 'lucide-react';
 
 interface LogEntry {
@@ -38,8 +35,14 @@ interface ConnectionStatus {
     };
 }
 
+interface McpResponse {
+    protocolVersion: string;
+    capabilities: { resources: { subscribe: boolean; listChanged: boolean }; tools: object; prompts: object };
+    serverInfo: { name: string; version: string; description: string };
+}
+
 // Simulated MCP test client for the UI
-async function testMcpServer(): Promise<{ success: boolean; response: any; error?: string }> {
+async function testMcpServer(): Promise<{ success: boolean; response: McpResponse | null; error?: string }> {
     try {
         const mockResponse = {
             protocolVersion: '2024-11-05',
@@ -75,7 +78,7 @@ export default function ConnectPage() {
     const [isConnecting, setIsConnecting] = useState(false);
     const [configCopied, setConfigCopied] = useState(false);
 
-    const addLog = useCallback((type: LogEntry['type'], method: string | undefined, data: any) => {
+    const addLog = useCallback((type: LogEntry['type'], method: string | undefined, data: unknown) => {
         const entry: LogEntry = {
             id: `log_${Date.now()}_${Math.random().toString(36).substr(2, 5)}`,
             timestamp: new Date(),

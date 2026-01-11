@@ -47,7 +47,7 @@ export default function ChatPage() {
                         <div>
                             <select
                                 value={activeModel}
-                                onChange={(e) => setActiveModel(e.target.value as any)}
+                                onChange={(e) => setActiveModel(e.target.value as typeof activeModel)}
                                 className="bg-transparent text-stone-900 font-black text-sm focus:outline-none cursor-pointer tracking-tight"
                             >
                                 <option value="gpt-4">GPT-4 Turbo</option>
