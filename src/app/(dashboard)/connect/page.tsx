@@ -95,7 +95,7 @@ export default function ConnectPage() {
 
         const result = await testMcpServer();
 
-        if (result.success) {
+        if (result.success && result.response) {
             addLog('response', 'initialize', result.response);
             setStatus({
                 status: 'connected',

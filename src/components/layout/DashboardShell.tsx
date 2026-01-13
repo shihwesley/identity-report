@@ -1,13 +1,17 @@
 'use client';
 
 import { ReactNode } from 'react';
+import { LogOut } from 'lucide-react';
 import { Sidebar } from '@/components/Sidebar';
+import { useAuth } from '@/lib/auth/context';
 
 interface DashboardShellProps {
     children: ReactNode;
 }
 
 export function DashboardShell({ children }: DashboardShellProps) {
+    const { signOut } = useAuth();
+
     return (
         <div className="flex min-h-screen mesh-gradient bg-fixed">
             {/* Fixed Sidebar */}
@@ -24,6 +28,13 @@ export function DashboardShell({ children }: DashboardShellProps) {
                         <span className="text-xs font-bold text-stone-500 uppercase tracking-widest">Network Status: <span className="text-stone-900">Synchronized</span></span>
                     </div>
                     <div className="flex items-center gap-4">
+                        <button
+                            onClick={signOut}
+                            className="p-2 rounded-xl hover:bg-red-50 text-stone-400 hover:text-red-500 transition-colors"
+                            title="Sign Out"
+                        >
+                            <LogOut size={18} />
+                        </button>
                         <button className="p-2 rounded-full hover:bg-white/50 transition-colors">
                             <div className="w-8 h-8 rounded-full bg-stone-100 flex items-center justify-center text-[10px] font-bold text-stone-600">
                                 QS

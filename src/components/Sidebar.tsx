@@ -15,7 +15,7 @@ import {
 } from 'lucide-react';
 
 const NAV_ITEMS = [
-    { label: 'Command Center', href: '/', icon: LayoutGrid, iconId: 'grid' },
+    { label: 'Command Center', href: '/dashboard', icon: LayoutGrid, iconId: 'grid' },
     { label: 'Profile Editor', href: '/profile', icon: User, iconId: 'user' },
     { label: 'Memory Graph', href: '/memory', icon: Network, iconId: 'network' },
     { label: 'Active Chat', href: '/chat', icon: MessageCircle, iconId: 'message-circle' },
@@ -29,7 +29,7 @@ export function Sidebar() {
     return (
         <aside className="w-64 h-screen fixed left-0 top-0 border-r border-stone-200/50 bg-white/70 backdrop-blur-xl flex flex-col z-50">
             <div className="p-6">
-                <Link href="/" className="flex items-center gap-3 group">
+                <Link href="/dashboard" className="flex items-center gap-3 group">
                     <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-[#1E90FF] to-[#00BFFF] flex items-center justify-center text-white shadow-lg shadow-blue-500/20 group-hover:scale-105 transition-transform">
                         <Shield size={22} strokeWidth={2.5} />
                     </div>
