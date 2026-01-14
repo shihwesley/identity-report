@@ -3,16 +3,15 @@ import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { renderHook, act, waitFor } from '@testing-library/react'
 import { ReactNode } from 'react'
 
-// Mock session module
-const mockSetVaultSession = vi.fn()
-const mockClearVaultSession = vi.fn()
-const mockHasVaultSession = vi.fn()
-
+// Mock session module - assign vi.fn() directly to track calls
 vi.mock('@/lib/auth/session', () => ({
-  setVaultSession: () => mockSetVaultSession(),
-  clearVaultSession: () => mockClearVaultSession(),
-  hasVaultSession: () => mockHasVaultSession(),
+  setVaultSession: vi.fn(),
+  clearVaultSession: vi.fn(),
+  hasVaultSession: vi.fn(),
 }))
+
+// Import mocked functions for configuration
+import { setVaultSession, clearVaultSession, hasVaultSession } from '@/lib/auth/session'
 
 // Mock next/navigation
 const mockPush = vi.fn()
@@ -30,7 +29,7 @@ import { AuthProvider, useAuth } from '@/lib/auth/context'
 describe('context.tsx', () => {
   beforeEach(() => {
     vi.clearAllMocks()
-    mockHasVaultSession.mockReturnValue(false)
+    ;(hasVaultSession as ReturnType<typeof vi.fn>).mockReturnValue(false)
   })
 
   const wrapper = ({ children }: { children: ReactNode }) => (
@@ -63,12 +62,12 @@ describe('context.tsx', () => {
       renderHook(() => useAuth(), { wrapper })
 
       await waitFor(() => {
-        expect(mockHasVaultSession).toHaveBeenCalled()
+        expect(hasVaultSession).toHaveBeenCalled()
       })
     })
 
     it('sets isAuthenticated=true if session exists', async () => {
-      mockHasVaultSession.mockReturnValue(true)
+      ;(hasVaultSession as ReturnType<typeof vi.fn>).mockReturnValue(true)
 
       const { result } = renderHook(() => useAuth(), { wrapper })
 
@@ -79,7 +78,7 @@ describe('context.tsx', () => {
     })
 
     it('sets isAuthenticated=false if no session exists', async () => {
-      mockHasVaultSession.mockReturnValue(false)
+      ;(hasVaultSession as ReturnType<typeof vi.fn>).mockReturnValue(false)
 
       const { result } = renderHook(() => useAuth(), { wrapper })
 
@@ -122,7 +121,7 @@ describe('context.tsx', () => {
         result.current.signIn('wallet', testUser)
       })
 
-      expect(mockSetVaultSession).toHaveBeenCalledTimes(1)
+      expect(setVaultSession).toHaveBeenCalledTimes(1)
     })
 
     it('supports wallet auth method', async () => {
@@ -197,7 +196,7 @@ describe('context.tsx', () => {
         result.current.signOut()
       })
 
-      expect(mockClearVaultSession).toHaveBeenCalledTimes(1)
+      expect(clearVaultSession).toHaveBeenCalledTimes(1)
     })
 
     it('redirects to / via router.push', async () => {
