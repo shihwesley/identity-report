@@ -11,7 +11,7 @@
     "start:mcp": "NODE_ENV=production MCP_TRANSPORT=sse node dist/server.js",
     "lint": "eslint",
     "test": "vitest",
-    "test:unit": "vitest run --project unit",
+    "test:unit": "vitest run --project unit --project unit-react",
     "test:integration": "vitest run --project integration",
     "test:component": "vitest run --project component",
     "test:e2e": "playwright test",
