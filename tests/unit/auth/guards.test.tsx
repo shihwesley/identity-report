@@ -1,28 +1,32 @@
 // tests/unit/auth/guards.test.tsx
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { renderHook, render, screen, waitFor } from '@testing-library/react'
-import { useRequireAuth, useRedirectIfAuth, withAuth } from '@/lib/auth/guards'
 
-// Mock next/navigation
-const mockPush = vi.fn()
-vi.mock('next/navigation', () => ({
-  useRouter: () => ({
-    push: mockPush,
-    replace: vi.fn(),
-    back: vi.fn(),
-  }),
-}))
-
-// Mock useAuth from context
-const mockUseAuth = vi.fn()
+// Mock at module level with vi.fn() directly
 vi.mock('@/lib/auth/context', () => ({
-  useAuth: () => mockUseAuth(),
+  useAuth: vi.fn(),
 }))
+
+vi.mock('next/navigation', () => ({
+  useRouter: vi.fn(),
+}))
+
+// Import after mocks
+import { useRequireAuth, useRedirectIfAuth, withAuth } from '@/lib/auth/guards'
+import { useAuth } from '@/lib/auth/context'
+import { useRouter } from 'next/navigation'
+
+const mockPush = vi.fn()
 
 describe('guards.tsx', () => {
   beforeEach(() => {
     vi.clearAllMocks()
-    mockUseAuth.mockReturnValue({
+    ;(useRouter as ReturnType<typeof vi.fn>).mockReturnValue({
+      push: mockPush,
+      replace: vi.fn(),
+      back: vi.fn(),
+    })
+    ;(useAuth as ReturnType<typeof vi.fn>).mockReturnValue({
       isAuthenticated: false,
       isLoading: true,
       authMethod: null,
@@ -33,21 +37,21 @@ describe('guards.tsx', () => {
   })
 
   describe('useRequireAuth', () => {
-    it('redirects to /signin when not authenticated and not loading', async () => {
-      mockUseAuth.mockReturnValue({
+    it('redirects to /signin when not authenticated and not loading', () => {
+      ;(useAuth as ReturnType<typeof vi.fn>).mockReturnValue({
         isAuthenticated: false,
         isLoading: false,
       })
 
       renderHook(() => useRequireAuth())
 
-      await waitFor(() => {
-        expect(mockPush).toHaveBeenCalledWith('/signin')
-      })
+      // Should redirect immediately in useEffect
+      expect(mockPush).toHaveBeenCalledTimes(1)
+      expect(mockPush).toHaveBeenCalledWith('/signin')
     })
 
     it('does not redirect while loading', () => {
-      mockUseAuth.mockReturnValue({
+      ;(useAuth as ReturnType<typeof vi.fn>).mockReturnValue({
         isAuthenticated: false,
         isLoading: true,
       })
@@ -58,7 +62,7 @@ describe('guards.tsx', () => {
     })
 
     it('does not redirect when authenticated', () => {
-      mockUseAuth.mockReturnValue({
+      ;(useAuth as ReturnType<typeof vi.fn>).mockReturnValue({
         isAuthenticated: true,
         isLoading: false,
       })
@@ -68,21 +72,20 @@ describe('guards.tsx', () => {
       expect(mockPush).not.toHaveBeenCalled()
     })
 
-    it('uses custom redirect path when provided', async () => {
-      mockUseAuth.mockReturnValue({
+    it('uses custom redirect path when provided', () => {
+      ;(useAuth as ReturnType<typeof vi.fn>).mockReturnValue({
         isAuthenticated: false,
         isLoading: false,
       })
 
       renderHook(() => useRequireAuth('/login'))
 
-      await waitFor(() => {
-        expect(mockPush).toHaveBeenCalledWith('/login')
-      })
+      expect(mockPush).toHaveBeenCalledTimes(1)
+      expect(mockPush).toHaveBeenCalledWith('/login')
     })
 
     it('returns auth state', () => {
-      mockUseAuth.mockReturnValue({
+      ;(useAuth as ReturnType<typeof vi.fn>).mockReturnValue({
         isAuthenticated: true,
         isLoading: false,
       })
@@ -94,24 +97,45 @@ describe('guards.tsx', () => {
         isLoading: false,
       })
     })
+
+    it('redirects when loading completes and user not authenticated', async () => {
+      // Start with loading state
+      ;(useAuth as ReturnType<typeof vi.fn>).mockReturnValue({
+        isAuthenticated: false,
+        isLoading: true,
+      })
+
+      const { rerender } = renderHook(() => useRequireAuth())
+      expect(mockPush).not.toHaveBeenCalled()
+
+      // Loading completes, not authenticated
+      ;(useAuth as ReturnType<typeof vi.fn>).mockReturnValue({
+        isAuthenticated: false,
+        isLoading: false,
+      })
+      rerender()
+
+      await waitFor(() => {
+        expect(mockPush).toHaveBeenCalledWith('/signin')
+      })
+    })
   })
 
   describe('useRedirectIfAuth', () => {
-    it('redirects to /dashboard when authenticated and not loading', async () => {
-      mockUseAuth.mockReturnValue({
+    it('redirects to /dashboard when authenticated and not loading', () => {
+      ;(useAuth as ReturnType<typeof vi.fn>).mockReturnValue({
         isAuthenticated: true,
         isLoading: false,
       })
 
       renderHook(() => useRedirectIfAuth())
 
-      await waitFor(() => {
-        expect(mockPush).toHaveBeenCalledWith('/dashboard')
-      })
+      expect(mockPush).toHaveBeenCalledTimes(1)
+      expect(mockPush).toHaveBeenCalledWith('/dashboard')
     })
 
     it('does not redirect when not authenticated', () => {
-      mockUseAuth.mockReturnValue({
+      ;(useAuth as ReturnType<typeof vi.fn>).mockReturnValue({
         isAuthenticated: false,
         isLoading: false,
       })
@@ -122,7 +146,7 @@ describe('guards.tsx', () => {
     })
 
     it('does not redirect while loading', () => {
-      mockUseAuth.mockReturnValue({
+      ;(useAuth as ReturnType<typeof vi.fn>).mockReturnValue({
         isAuthenticated: true,
         isLoading: true,
       })
@@ -132,21 +156,20 @@ describe('guards.tsx', () => {
       expect(mockPush).not.toHaveBeenCalled()
     })
 
-    it('uses custom redirect path when provided', async () => {
-      mockUseAuth.mockReturnValue({
+    it('uses custom redirect path when provided', () => {
+      ;(useAuth as ReturnType<typeof vi.fn>).mockReturnValue({
         isAuthenticated: true,
         isLoading: false,
       })
 
       renderHook(() => useRedirectIfAuth('/home'))
 
-      await waitFor(() => {
-        expect(mockPush).toHaveBeenCalledWith('/home')
-      })
+      expect(mockPush).toHaveBeenCalledTimes(1)
+      expect(mockPush).toHaveBeenCalledWith('/home')
     })
 
     it('returns auth state', () => {
-      mockUseAuth.mockReturnValue({
+      ;(useAuth as ReturnType<typeof vi.fn>).mockReturnValue({
         isAuthenticated: false,
         isLoading: true,
       })
@@ -158,6 +181,28 @@ describe('guards.tsx', () => {
         isLoading: true,
       })
     })
+
+    it('redirects when loading completes and user is authenticated', async () => {
+      // Start with loading state
+      ;(useAuth as ReturnType<typeof vi.fn>).mockReturnValue({
+        isAuthenticated: true,
+        isLoading: true,
+      })
+
+      const { rerender } = renderHook(() => useRedirectIfAuth())
+      expect(mockPush).not.toHaveBeenCalled()
+
+      // Loading completes, authenticated
+      ;(useAuth as ReturnType<typeof vi.fn>).mockReturnValue({
+        isAuthenticated: true,
+        isLoading: false,
+      })
+      rerender()
+
+      await waitFor(() => {
+        expect(mockPush).toHaveBeenCalledWith('/dashboard')
+      })
+    })
   })
 
   describe('withAuth HOC', () => {
@@ -166,7 +211,7 @@ describe('guards.tsx', () => {
     )
 
     it('shows loading spinner when isLoading=true', () => {
-      mockUseAuth.mockReturnValue({
+      ;(useAuth as ReturnType<typeof vi.fn>).mockReturnValue({
         isAuthenticated: false,
         isLoading: true,
       })
@@ -181,7 +226,7 @@ describe('guards.tsx', () => {
     })
 
     it('returns null when not authenticated (after loading)', () => {
-      mockUseAuth.mockReturnValue({
+      ;(useAuth as ReturnType<typeof vi.fn>).mockReturnValue({
         isAuthenticated: false,
         isLoading: false,
       })
@@ -194,7 +239,7 @@ describe('guards.tsx', () => {
     })
 
     it('renders component when authenticated', () => {
-      mockUseAuth.mockReturnValue({
+      ;(useAuth as ReturnType<typeof vi.fn>).mockReturnValue({
         isAuthenticated: true,
         isLoading: false,
       })
@@ -207,7 +252,7 @@ describe('guards.tsx', () => {
     })
 
     it('passes props to wrapped component', () => {
-      mockUseAuth.mockReturnValue({
+      ;(useAuth as ReturnType<typeof vi.fn>).mockReturnValue({
         isAuthenticated: true,
         isLoading: false,
       })
@@ -218,8 +263,8 @@ describe('guards.tsx', () => {
       expect(screen.getByText('Custom Message')).toBeInTheDocument()
     })
 
-    it('uses custom redirect path', async () => {
-      mockUseAuth.mockReturnValue({
+    it('uses custom redirect path', () => {
+      ;(useAuth as ReturnType<typeof vi.fn>).mockReturnValue({
         isAuthenticated: false,
         isLoading: false,
       })
@@ -227,9 +272,8 @@ describe('guards.tsx', () => {
       const ProtectedComponent = withAuth(TestComponent, '/custom-login')
       render(<ProtectedComponent message="Hello" />)
 
-      await waitFor(() => {
-        expect(mockPush).toHaveBeenCalledWith('/custom-login')
-      })
+      expect(mockPush).toHaveBeenCalledTimes(1)
+      expect(mockPush).toHaveBeenCalledWith('/custom-login')
     })
   })
 })
