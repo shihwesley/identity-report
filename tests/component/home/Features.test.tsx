@@ -34,7 +34,7 @@ describe('Features Component', () => {
       const { container } = render(<Features />)
       // Lucide icons render as SVG elements
       const svgIcons = container.querySelectorAll('svg')
-      expect(svgIcons.length).toBeGreaterThanOrEqual(3)
+      expect(svgIcons.length).toBe(3)
     })
   })
 
