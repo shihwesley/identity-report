@@ -36,6 +36,19 @@ export default defineConfig({
         }
       },
       {
+        // jsdom environment for unit tests that use React hooks
+        extends: true,
+        test: {
+          name: 'unit-react',
+          environment: 'jsdom',
+          include: [
+            'tests/unit/**/*.test.tsx'
+          ],
+          exclude: ['tests/e2e/**', 'tests/contracts/**', 'node_modules/**'],
+          setupFiles: ['./tests/setup/vitest.setup.ts']
+        }
+      },
+      {
         // jsdom environment for component tests (need DOM)
         extends: true,
         test: {
@@ -43,6 +56,17 @@ export default defineConfig({
           environment: 'jsdom',
           include: ['tests/component/**/*.test.tsx'],
           exclude: ['node_modules/**'],
+          setupFiles: ['./tests/setup/vitest.setup.ts']
+        }
+      },
+      {
+        // Node environment for integration tests (middleware, API routes)
+        extends: true,
+        test: {
+          name: 'integration',
+          environment: 'node',
+          include: ['tests/integration/**/*.test.ts'],
+          exclude: ['tests/e2e/**', 'node_modules/**'],
           setupFiles: ['./tests/setup/vitest.setup.ts']
         }
       }

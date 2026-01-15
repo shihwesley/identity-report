@@ -6,6 +6,11 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 Identity Report is a local-first, privacy-preserving identity management system that enables users to own, control, and port their AI context across different providers. It combines cryptographic identity (DID), encrypted storage (AES-256-GCM), decentralized backup (IPFS), and blockchain-based discovery (Polygon Amoy).
 
+**Stack**: Next.js 16, React 19, viem, @noble crypto, IndexedDB, Polygon Amoy
+**Structure**: Monorepo with frontend + MCP server + Solidity contracts
+
+For detailed architecture, module guide, and data flows, see [DOCS/CODEBASE_MAP.md](DOCS/CODEBASE_MAP.md).
+
 ## Common Commands
 
 ```bash

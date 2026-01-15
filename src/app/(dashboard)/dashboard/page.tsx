@@ -5,7 +5,6 @@ import { ContextSelector } from '@/components/dashboard/ContextSelector';
 import { PermissionsList } from '@/components/dashboard/PermissionsList';
 import ConnectWallet from '@/components/dashboard/ConnectWallet';
 import { IdentityCard } from '@/components/dashboard/IdentityCard';
-import { DashboardShell } from '@/components/layout/DashboardShell';
 import { useState } from 'react';
 import {
   CloudIcon,
@@ -29,7 +28,7 @@ export default function Home() {
   };
 
   return (
-    <DashboardShell>
+    <>
       {/* Hero Section: Identity + Quick Insights */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
 
@@ -150,7 +149,7 @@ export default function Home() {
           <PermissionsList profile={CURRENT_PROFILE} />
         </div>
       </div>
-    </DashboardShell>
+    </>
   );
 }
 
