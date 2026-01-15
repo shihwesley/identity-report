@@ -58,6 +58,17 @@ export default defineConfig({
           exclude: ['node_modules/**'],
           setupFiles: ['./tests/setup/vitest.setup.ts']
         }
+      },
+      {
+        // Node environment for integration tests (middleware, API routes)
+        extends: true,
+        test: {
+          name: 'integration',
+          environment: 'node',
+          include: ['tests/integration/**/*.test.ts'],
+          exclude: ['tests/e2e/**', 'node_modules/**'],
+          setupFiles: ['./tests/setup/vitest.setup.ts']
+        }
       }
     ]
   },

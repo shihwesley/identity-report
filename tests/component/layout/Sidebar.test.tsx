@@ -35,7 +35,7 @@ vi.mock('next/link', () => ({
 // ============================================================
 
 const NAV_ITEMS = [
-  { label: 'Command Center', href: '/', icon: 'grid' },
+  { label: 'Command Center', href: '/dashboard', icon: 'grid' },
   { label: 'Profile Editor', href: '/profile', icon: 'user' },
   { label: 'Memory Graph', href: '/memory', icon: 'network' },
   { label: 'Active Chat', href: '/chat', icon: 'message-circle' },
@@ -180,8 +180,8 @@ describe('Sidebar', () => {
   });
 
   describe('Active State', () => {
-    it('highlights Command Center when on root path', () => {
-      mockUsePathname.mockReturnValue('/');
+    it('highlights Command Center when on dashboard path', () => {
+      mockUsePathname.mockReturnValue('/dashboard');
       render(<Sidebar />);
 
       const commandCenterLink = screen.getByText('Command Center').closest('a');
@@ -373,7 +373,7 @@ describe('Sidebar', () => {
 
   describe('Path Matching', () => {
     it('handles exact path matching', () => {
-      mockUsePathname.mockReturnValue('/');
+      mockUsePathname.mockReturnValue('/dashboard');
       render(<Sidebar />);
 
       const commandCenterLink = screen.getByText('Command Center').closest('a');
@@ -407,7 +407,7 @@ describe('Sidebar', () => {
     it('links navigate to correct pages', () => {
       render(<Sidebar />);
 
-      expect(screen.getByText('Command Center').closest('a')).toHaveAttribute('href', '/');
+      expect(screen.getByText('Command Center').closest('a')).toHaveAttribute('href', '/dashboard');
       expect(screen.getByText('Profile Editor').closest('a')).toHaveAttribute('href', '/profile');
       expect(screen.getByText('Memory Graph').closest('a')).toHaveAttribute('href', '/memory');
       expect(screen.getByText('Active Chat').closest('a')).toHaveAttribute('href', '/chat');
