@@ -9,7 +9,7 @@ Identity Report is a local-first, privacy-preserving identity management system 
 **Stack**: Next.js 16, React 19, viem, @noble crypto, IndexedDB, Polygon Amoy
 **Structure**: Monorepo with frontend + MCP server + Solidity contracts
 
-For detailed architecture, module guide, and data flows, see [docs/CODEBASE_MAP.md](docs/CODEBASE_MAP.md).
+For detailed architecture, module guide, and data flows, see [DOCS/CODEBASE_MAP.md](DOCS/CODEBASE_MAP.md).
 
 ## Common Commands
 
